@@ -32,7 +32,7 @@ public class Mod : IMod
     {
         m_Log.Info($"Loading {m_Id} v{m_InformationalVersion}");
 
-        var outdatedType = System.Type.GetType("C2VM.TrafficLightsEnhancement.Plugin, C2VM.TrafficLightsEnhancement") ?? System.Type.GetType("C2VM.CommonLibraries.LaneSystem.Plugin, C2VM.CommonLibraries.LaneSystem");
+        /*var outdatedType = System.Type.GetType("C2VM.TrafficLightsEnhancement.Plugin, C2VM.TrafficLightsEnhancement") ?? System.Type.GetType("C2VM.CommonLibraries.LaneSystem.Plugin, C2VM.CommonLibraries.LaneSystem");
         if (outdatedType != null)
         {
             throw new System.Exception($"An outdated version of Traffic Lights Enhancement has been detected at {outdatedType.Assembly.Location}");
@@ -41,7 +41,7 @@ public class Mod : IMod
         if (GameManager.instance.modManager.TryGetExecutableAsset(this, out var asset))
         {
             m_Log.Info($"Current mod asset at {asset.path}");
-        }
+        }*/
 
         m_World = updateSystem.World;
 
