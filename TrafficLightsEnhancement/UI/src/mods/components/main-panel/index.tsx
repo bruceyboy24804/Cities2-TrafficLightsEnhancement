@@ -9,9 +9,10 @@ import { MainPanelState } from '../../constants';
 import Header from './header';
 import Content from './content';
 
-import FloatingButton from '../../components/common/floating-button';
 import CustomPhaseMainPanel from '../../components/custom-phase-tool/main-panel';
+import{Button} from "cs2/ui"
 
+const traffLightSrc = "Media/Game/Icons/TrafficLights.svg"
 const defaultPanel = {
   title: "",
   image: "",
@@ -162,12 +163,16 @@ export default function MainPanel() {
 
   return (
     <>
-      <FloatingButton
-        show={showFloatingButton}
-        src="Media/Game/Icons/TrafficLights.svg"
-        tooltip={panel.title}
-        onClick={floatingButtonClickHandler}
+    
+    <Button
+        variant='floating'
+        selected={showFloatingButton}
+        src={traffLightSrc}
+        onSelect={floatingButtonClickHandler}
+        tooltipLabel={panel.title}
       />
+    
+      
       <Container
         ref={containerRef}
         style={style}
