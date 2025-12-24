@@ -16,7 +16,7 @@ public class Mod : IMod
 
     public static readonly ILog m_Log = LogManager.GetLogger($"{m_Id}.{nameof(Mod)}").SetShowsErrorsInUI(false);
 
-    public static C2VM.TrafficLightsEnhancement.Settings m_Settings;
+    public static Settings m_Settings;
 
     public static World m_World;
 

@@ -32,6 +32,8 @@ public class Settings : ModSetting
     public const string kGroupKeyBindingReset = "GroupKeyBindingReset";
 
     public const string kKeyboardBindingMainPanelToggle = "KeyboardBindingMainPanelToggle";
+    
+    public const string kKeyboardBindingMultiSelectEntity = "KeyboardBindingMultiSelectEntity";
 
     public struct Values
     {
@@ -152,6 +154,10 @@ public class Settings : ModSetting
     [SettingsUIKeyboardBinding(BindingKeyboard.None, kKeyboardBindingMainPanelToggle)]
     [SettingsUISection(kTabKeyBindings, kGroupMainPanel)]
     public ProxyBinding m_MainPanelToggleKeyboardBinding { get; set; }
+    
+    [SettingsUIKeyboardBinding(BindingKeyboard.None, kKeyboardBindingMultiSelectEntity)]
+    [SettingsUISection(kTabKeyBindings, kGroupMainPanel)]
+    public ProxyBinding m_MultiSelectEntityKeyboardBinding { get; set; }
 
     [SettingsUISection(kTabKeyBindings, kGroupKeyBindingReset)]
     [SettingsUIButton]

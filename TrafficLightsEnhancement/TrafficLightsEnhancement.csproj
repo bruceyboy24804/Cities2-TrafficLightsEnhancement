@@ -106,11 +106,9 @@
         <ProjectReference Include="..\CommonLibraries\LaneSystem\LaneSystem.csproj" />
     </ItemGroup>
 
-    <Target Name="BuildFrontend" BeforeTargets="CoreCompile" Condition="'$(DisableBuildFrontend)' != 'true'">
-        <Exec Command="npm install --prefer-offline --no-audit" WorkingDirectory="..\TLEFrontend\" />
-        <Exec Command="npm run build" WorkingDirectory="..\TLEFrontend\" />
-        <Copy SourceFiles="..\TLEFrontend\dist\C2VM.TLEFrontend.mjs" DestinationFolder="$(OutDir)\" />
-    </Target>
+    <Target Name="InstallUI" AfterTargets="AfterBuild">
+		<Exec Command="npm run build" WorkingDirectory="$(ProjectDir)/UI" />
+	</Target>
 
     <Target Name="CopyLaneSystem" BeforeTargets="CoreCompile">
         <ItemGroup>
