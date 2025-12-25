@@ -8,8 +8,6 @@ import { getString } from "../../../localisations";
 
 import Button from "../../common/button";
 import Checkbox from "../../common/checkbox";
-import Tooltip from "../../common/tooltip";
-import TooltipIcon from "../../common/tooltip-icon";
 import OptionsTooltip from '../../custom-phase-tool/tooltips/options';
 import Divider from "../../main-panel/items/divider";
 import MainPanelRange from "../../main-panel/items/range";
@@ -17,6 +15,8 @@ import Row from "../../main-panel/items/row";
 import Title from "../../main-panel/items/title";
 import TitleDim from "../../main-panel/items/title-dim";
 import { MainPanelItemTitle, MainPanelItemCustomPhase } from "mods/general";
+import { Tooltip } from "cs2/ui";
+import TooltipIcon from "mods/components/common/tooltip-icon";
 
 const DimLabel = styled.div`
   color: var(--textColorDim);
@@ -36,7 +36,7 @@ const ItemTitle = (props: {title: string, secondaryText?: string, tooltip?: Reac
       {props.dim && <TitleDim {...item} />}
       {!props.dim && <Title {...item} />}
       {props.tooltip && <>
-        <Tooltip position="right-start" tooltip={props.tooltip}>
+        <Tooltip alignment="end" tooltip={props.tooltip}>
           <TooltipIcon style={{marginLeft: "0.25em"}} />
         </Tooltip>
       </>}

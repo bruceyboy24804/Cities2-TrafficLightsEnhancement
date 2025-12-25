@@ -2,15 +2,10 @@ import { useContext } from "react";
 
 import { LocaleContext } from "../../../context";
 import { getString } from "../../../localisations";
-
+import { Tooltip } from "cs2/ui";
 import TooltipContainer from "../../common/tooltip-container";
 
 export default function LinkPhase(props: {link: boolean}) {
   const locale = useContext(LocaleContext);
-  return (
-    <TooltipContainer>
-      {props.link && getString(locale, "LinkPhase")}
-      {!props.link && getString(locale, "UnlinkPhase")}
-    </TooltipContainer>
-  );
+  return getString(locale, props.link ? "LinkPhase" : "UnlinkPhase");
 }

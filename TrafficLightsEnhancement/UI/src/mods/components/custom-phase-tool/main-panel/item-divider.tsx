@@ -4,8 +4,8 @@ import { call } from "cs2/api";
 
 import LinkVariant from "../../common/icons/link-variant";
 import LinkVariantOff from "../../common/icons/link-variant-off";
-import Tooltip from "../../common/tooltip";
 import LinkPhase from "../tooltips/link-phase";
+import { Tooltip } from "cs2/ui";
 
 const Container = styled.div`
   display: flex;
@@ -45,7 +45,7 @@ export default function ItemDivider(props: {index: number, linked: boolean}) {
   return (
     <Container>
       <Divider invisible={props.linked} style={{borderTopRightRadius: 0, borderBottomRightRadius: 0}} />
-      <Tooltip position="right" tooltip={<LinkPhase link={!props.linked} />}>
+      <Tooltip direction="right" tooltip={LinkPhase({link: !props.linked})}>
         <IconContainer onClick={clickHandler}>
           {props.linked && <LinkVariantOff style={IconStyle} />}
           {!props.linked && <LinkVariant style={IconStyle} />}
