@@ -64,8 +64,9 @@ public struct CustomPhaseProcessor
                     groupMask.m_Car = subLaneGroupMask.m_Car;
                     groupMask.m_PublicCar = subLaneGroupMask.m_Car;
                     groupMask.m_Track = subLaneGroupMask.m_Track;
-                    groupMask.m_PedestrianStopLine = subLaneGroupMask.m_Pedestrian;
-                    groupMask.m_PedestrianNonStopLine = subLaneGroupMask.m_Pedestrian;
+                    groupMask.m_Pedestrian = subLaneGroupMask.m_Pedestrian;
+                   
+                    
                 }
                 if (job.m_CarLaneData.TryGetComponent(subLane, out var nodeCarLane))
                 {
@@ -116,12 +117,9 @@ public struct CustomPhaseProcessor
                 {
                     if (NodeUtils.IsCrossingStopLine(ref job, subLane, sourceEdge))
                     {
-                        laneSignal.m_GroupMask = groupMask.m_PedestrianStopLine.m_GoGroupMask;
+                        laneSignal.m_GroupMask = groupMask.m_Pedestrian.m_GoGroupMask;
                     }
-                    else
-                    {
-                        laneSignal.m_GroupMask = groupMask.m_PedestrianNonStopLine.m_GoGroupMask;
-                    }
+                    
                 }
             }
 

@@ -1,10 +1,5 @@
-// Colossal.Core, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-// Colossal.GizmosSystem
-// Decompiled with ICSharpCode.Decompiler 8.1.1.7464
-
 using System.Collections.Generic;
 using System.IO;
-using Colossal.Mathematics;
 using Game;
 using Game.Prefabs;
 using Game.Rendering;
@@ -32,18 +27,6 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Overlay
 
         private PrefabSystem m_PrefabSystem;
 
-        private MaterialPropertyBlock m_Block;
-
-        private Mesh m_LineMesh;
-
-        private Material m_LineMaterial;
-
-        private List<Color> m_LineColors;
-
-        private List<int> m_LineIndices;
-
-        private List<Vector3> m_LineVertices;
-
         private Mesh m_IconMesh;
 
         private Material m_IconMaterial;
@@ -69,16 +52,6 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Overlay
             base.OnCreate();
 
             m_PrefabSystem = base.World.GetOrCreateSystemManaged<PrefabSystem>();
-
-            m_Block = new MaterialPropertyBlock();
-            m_LineColors = new(128);
-            m_LineVertices = new(128);
-            m_LineIndices = new(384);
-            m_LineMesh = new Mesh();
-            m_LineMesh.hideFlags = HideFlags.HideAndDontSave;
-            m_LineMesh.indexFormat = IndexFormat.UInt32;
-            m_LineMesh.MarkDynamic();
-            m_LineMaterial = new Material(Shader.Find("Coherent/ViewShader"));
 
             IconSetup();
 
@@ -151,9 +124,6 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Overlay
         {
             RenderPipelineManager.beginContextRendering -= Render;
 
-            Object.Destroy(m_LineMesh);
-            Object.Destroy(m_LineMaterial);
-
             Object.Destroy(m_IconMesh);
             Object.Destroy(m_IconMaterial);
             Object.Destroy(m_IconTextureArray);
@@ -171,10 +141,6 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Overlay
             {
                 if (camera.cameraType == CameraType.Game)
                 {
-                    if (m_LineMesh.subMeshCount > 0)
-                    {
-                        Graphics.DrawMesh(m_LineMesh, Matrix4x4.identity, m_LineMaterial, 0, camera, 0, m_Block, castShadows: false, receiveShadows: false);
-                    }
                     if (m_IconInstanceData.Count > 0)
                     {
                         var cameraPosition = camera.transform.position;
@@ -197,73 +163,6 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Overlay
                     }
                 }
             }
-        }
-
-        public void AddBezier(Bezier4x3 bezier, Color color, float length = 1f, float thickness = 0.25f)
-        {
-            int segmentCount = (int)math.min(math.max(4f, length * 2f), 16f);
-            int maxSegmentIndex = segmentCount - 1;
-            int verticesCount = m_LineVertices.Count;
-            Vector3 p1 = new(), p2 = new(), v1 = new(), v2 = new();
-            for (int i = 0; i < maxSegmentIndex; i++)
-            {
-                p1 = MathUtils.Position(bezier, (float)i / maxSegmentIndex);
-                p2 = MathUtils.Position(bezier, (float)(i + 1) / maxSegmentIndex);
-                v1 = Quaternion.AngleAxis(-90, Vector3.up) * (p2 - p1).normalized * thickness;
-                v2 = v1 * -1.0f;
-                m_LineVertices.Add(p1 + v1);
-                m_LineVertices.Add(p1 + v2);
-                m_LineColors.Add(color);
-                m_LineColors.Add(color);
-            }
-            m_LineVertices.Add(p2 + v1);
-            m_LineVertices.Add(p2 + v2);
-            m_LineColors.Add(color);
-            m_LineColors.Add(color);
-            for (int i = 0; i < maxSegmentIndex; i++)
-            {
-                m_LineIndices.Add(verticesCount + i * 2);
-                m_LineIndices.Add(verticesCount + i * 2 + 1);
-                m_LineIndices.Add(verticesCount + i * 2 + 2);
-                m_LineIndices.Add(verticesCount + i * 2 + 1);
-                m_LineIndices.Add(verticesCount + i * 2 + 2);
-                m_LineIndices.Add(verticesCount + i * 2 + 3);
-            }
-        }
-
-        public void AddBounds(Bounds3 bounds, Color color, float scale = 1f)
-        {
-            Vector3 centre = (bounds.min + bounds.max) / 2;
-            Vector3 vector = (centre - (Vector3)bounds.min) * scale;
-            Quaternion quaternion = Quaternion.AngleAxis(10, Vector3.up);
-            int verticesCount = m_LineVertices.Count;
-            m_LineVertices.Add(centre);
-            m_LineColors.Add(color);
-            for (int i = 0; i < 36; i++)
-            {
-                vector = quaternion * vector;
-                m_LineVertices.Add(centre + vector);
-                m_LineColors.Add(color);
-                m_LineIndices.Add(verticesCount);
-                m_LineIndices.Add(verticesCount + i);
-                m_LineIndices.Add(verticesCount + (i < 35 ? i : 0) + 1);
-            }
-        }
-
-        public void BuildLineMesh()
-        {
-            m_LineMesh.Clear();
-            m_LineMesh.SetVertices(m_LineVertices, 0, m_LineVertices.Count);
-            m_LineMesh.SetColors(m_LineColors, 0, m_LineColors.Count);
-            m_LineMesh.SetIndices(m_LineIndices, 0, m_LineIndices.Count, MeshTopology.Triangles, 0);
-        }
-
-        public void ClearLineMesh()
-        {
-            m_LineMesh.Clear();
-            m_LineColors.Clear();
-            m_LineIndices.Clear();
-            m_LineVertices.Clear();
         }
 
         public unsafe void AddIcon(Vector3 position, Icon type)

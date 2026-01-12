@@ -188,8 +188,7 @@ public struct CustomPhaseUtils
         TurnSwapBit(ref phase.m_Car, index1, index2);
         TurnSwapBit(ref phase.m_PublicCar, index1, index2);
         TurnSwapBit(ref phase.m_Track, index1, index2);
-        SignalSwapBit(ref phase.m_PedestrianStopLine, index1, index2);
-        SignalSwapBit(ref phase.m_PedestrianNonStopLine, index1, index2);
+        SignalSwapBit(ref phase.m_Pedestrian, index1, index2);
     }
 
     public static void SwapBit(ref SubLaneGroupMask phase, int index1, int index2)

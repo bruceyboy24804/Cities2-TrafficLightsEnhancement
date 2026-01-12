@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Globalization;
 using C2VM.TrafficLightsEnhancement.Components;
+using C2VM.TrafficLightsEnhancement.Extensions;
+using C2VM.TrafficLightsEnhancement.Systems;
 using C2VM.TrafficLightsEnhancement.Systems.Overlay;
 using C2VM.TrafficLightsEnhancement.Systems.Update;
 using C2VM.TrafficLightsEnhancement.Utils;
@@ -16,7 +18,7 @@ using UnityEngine;
 
 namespace C2VM.TrafficLightsEnhancement.Systems.UI;
 
-public partial class UISystem : UISystemBase
+public partial class UISystem: ExtendedUISystemBase
 {
     public enum MainPanelState : int
     {
@@ -24,13 +26,18 @@ public partial class UISystem : UISystemBase
         Empty = 1,
         Main = 2,
         CustomPhase = 3,
+        TrafficGroups = 4,
     }
 
     private bool m_ShowNotificationUnsaved;
-
+    
     public MainPanelState m_MainPanelState { get; private set; }
-
+    
     public Entity m_SelectedEntity { get; private set; }
+
+    private bool m_IsAddingMember = false;
+    private Entity m_TargetGroupForMember = Entity.Null;
+    private MainPanelState m_PreviousMainPanelState = MainPanelState.Hidden;
 
     private CustomTrafficLights m_CustomTrafficLights;
 
@@ -58,9 +65,16 @@ public partial class UISystem : UISystemBase
 
     private int m_DebugDisplayGroup;
 
+    private Entity m_HighlightedEdge = Entity.Null;
+
     private UITypes.ScreenPoint m_MainPanelPosition;
 
     public TypeHandle m_TypeHandle;
+
+    public int GetActiveViewingCustomPhaseIndex() => m_ActiveViewingCustomPhaseIndexBinding?.Value ?? -1;
+    public int GetActiveEditingCustomPhaseIndex() => m_ActiveEditingCustomPhaseIndexBinding?.Value ?? -1;
+    public int GetDebugDisplayGroup() => m_DebugDisplayGroup;
+    public Entity GetHighlightedEdge() => m_HighlightedEdge;
 
     protected override void OnCreate()
     {
@@ -89,12 +103,16 @@ public partial class UISystem : UISystemBase
         AddUIBindings();
         SetupKeyBindings();
         UpdateLocale();
+        
+        // Initialize TrafficGroupUI system
 
         GameManager.instance.localizationManager.onActiveDictionaryChanged += UpdateLocale;
+        
     }
 
     protected override void OnUpdate()
     {
+        base.OnUpdate();
         if (m_WorldPositionList.Count > 0 && !m_CameraPosition.Equals(m_CameraUpdateSystem.position))
         {
             m_CameraPosition = m_CameraUpdateSystem.position;
@@ -119,11 +137,16 @@ public partial class UISystem : UISystemBase
         {
             m_MainPanelBinding.Update();
         }
-        RedrawGizmo();
     }
 
     public void SetMainPanelState(MainPanelState state)
     {
+        // Track previous state when switching to TrafficGroups
+        if (state == MainPanelState.TrafficGroups && m_MainPanelState != MainPanelState.TrafficGroups)
+        {
+            m_PreviousMainPanelState = m_MainPanelState;
+        }
+        
         UpdateEntity();
         m_MainPanelState = state;
         m_MainPanelBinding.Update();
@@ -149,7 +172,6 @@ public partial class UISystem : UISystemBase
         }
         m_ModificationUpdateSystem.Enabled = m_MainPanelState != MainPanelState.Hidden;
         m_SimulationUpdateSystem.Enabled = m_MainPanelState != MainPanelState.Hidden;
-        m_RenderSystem.ClearLineMesh();
     }
 
     public static string GetLocaleCode()
@@ -180,11 +202,31 @@ public partial class UISystem : UISystemBase
         {
             return;
         }
-        if (m_EdgeInfoDictionary.ContainsKey(node))
-        {
-            NodeUtils.Dispose(m_EdgeInfoDictionary[node]);
-        }
+        
+        ClearEdgeInfo();
+        
         m_EdgeInfoDictionary[node] = NodeUtils.GetEdgeInfoList(Allocator.Persistent, node, this).AsArray();
+        
+        if (EntityManager.HasComponent<TrafficGroupMember>(node))
+        {
+            var member = EntityManager.GetComponentData<TrafficGroupMember>(node);
+            if (member.m_GroupEntity != Entity.Null)
+            {
+                var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
+                var groupMembers = trafficGroupSystem.GetGroupMembers(member.m_GroupEntity);
+                
+                foreach (var memberEntity in groupMembers)
+                {
+                    if (memberEntity != node && !m_EdgeInfoDictionary.ContainsKey(memberEntity))
+                    {
+                        m_EdgeInfoDictionary[memberEntity] = NodeUtils.GetEdgeInfoList(Allocator.Persistent, memberEntity, this).AsArray();
+                    }
+                }
+                
+                groupMembers.Dispose();
+            }
+        }
+        
         m_EdgeInfoBinding.Update();
         m_MainPanelBinding.Update();
     }
@@ -220,7 +262,7 @@ public partial class UISystem : UISystemBase
                     var customTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(m_SelectedEntity);
                     m_CustomTrafficLights.m_Timer = customTrafficLights.m_Timer;
                 }
-                EntityManager.SetComponentData<CustomTrafficLights>(m_SelectedEntity, m_CustomTrafficLights);
+                EntityManager.SetComponentData(m_SelectedEntity, m_CustomTrafficLights);
             }
 
             if (!EntityManager.HasComponent<Game.Net.TrafficLights>(m_SelectedEntity))
@@ -243,6 +285,30 @@ public partial class UISystem : UISystemBase
     {
         UpdateManualSignalGroup(0);
 
+        if (m_IsAddingMember && !entity.Equals(Entity.Null))
+        {
+            var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
+            trafficGroupSystem.AddJunctionToGroup(m_TargetGroupForMember, entity);
+
+            var targetGroupEntity = m_TargetGroupForMember;
+
+            m_SelectedEntity = entity;
+            UpdateEdgeInfo(entity);
+
+            m_IsAddingMember = false;
+            m_TargetGroupForMember = Entity.Null;
+
+            m_AddMemberStateBinding?.Update();
+
+            if (targetGroupEntity != Entity.Null)
+            {
+                SetMainPanelState(MainPanelState.TrafficGroups);
+            }
+
+            m_MainPanelBinding.Update();
+            return;
+        }
+
         if (entity != m_SelectedEntity && entity != Entity.Null && m_SelectedEntity != Entity.Null)
         {
             m_ShowNotificationUnsaved = true;
@@ -253,7 +319,6 @@ public partial class UISystem : UISystemBase
         if (entity != m_SelectedEntity)
         {
             m_ShowNotificationUnsaved = false;
-            m_RenderSystem.ClearLineMesh();
             ClearEdgeInfo();
 
             if (!entity.Equals(Entity.Null))

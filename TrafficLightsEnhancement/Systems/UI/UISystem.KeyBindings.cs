@@ -1,10 +1,11 @@
+using C2VM.TrafficLightsEnhancement.Extensions;
 using Game.Input;
 using Game.UI;
 using UnityEngine.InputSystem;
 
 namespace C2VM.TrafficLightsEnhancement.Systems.UI;
 
-public partial class UISystem : UISystemBase
+public partial class UISystem : ExtendedUISystemBase
 {
     private ProxyAction m_MainPanelToggleKeyboardBinding;
 

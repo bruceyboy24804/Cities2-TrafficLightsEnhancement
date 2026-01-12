@@ -1,0 +1,18 @@
+.container {
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+.tooltipContainer{
+ font-size: var(--fontSizeXS);
+  color: var(--textColorDim);
+  background-color: var(--tooltipColor);
+  filter: var(--tooltipFilter);
+  border-radius: 4rem;
+  padding: 0.25em 0.5em;
+  margin: 0.25em 0 0 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;   
+}

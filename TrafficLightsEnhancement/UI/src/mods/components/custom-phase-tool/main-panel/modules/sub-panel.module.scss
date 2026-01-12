@@ -1,0 +1,19 @@
+.dimLabel {
+	color: var(--textColorDim);
+	flex-grow: 1;
+	flex-shrink: 1;
+	flex-basis: auto;
+	display: inline;
+}
+
+.foldoutHeader {
+	color: var(--textColor);
+	flex-grow: 1;
+	flex-shrink: 1;
+	flex-basis: auto;
+}
+.hover{
+    &:hover {
+    background-color: var(--hoverColorBright);
+  }
+}

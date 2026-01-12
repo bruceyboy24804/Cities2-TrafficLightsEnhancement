@@ -1,0 +1,153 @@
+//edge-panel.tsx
+
+.edgePanelContainer{
+    position: fixed;
+    transform: translate(-50%);
+    margin:  -10rem 0 0 -10rem;
+    z-index: -1;
+}
+.edgePanelContent{
+    border-radius: 4rem;
+    background-color: var(--panelColorNormal);
+    backdrop-filter: var(--panelBlur);
+    color: var(--textColor);
+    flex: 1;
+    position: relative;
+    padding: 6rem;
+}
+.edgePanelLaneContainer{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    align-content: center;
+    margin:  0 0 6rem 0;
+}
+.edgePanelColumn{
+    padding: 0rem;
+    display: flex;
+    flex:  0 1 auto;
+}
+.edgePanelDivider{
+    height: 100%;
+    width: 0rem;
+    color: var(--dividerColor);
+    border-width: 2px;
+    border-style: solid;
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 0 6rem;
+}
+.edgePanelHorizontalDivider{
+    height: 2px;
+    width: auto;
+    color: var(--dividerColor);
+    border-width: 2px;
+    border-style: solid;
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 6rem -6rem;
+}
+.edgePanelIconContainer{
+    &:hover {
+        filter: brightness(1.2) contrast(1.2);
+    }
+}
+.edgePanelIconStyle{
+    color: var(--textColorDim);
+    width: 20rem;
+    height: 20rem;
+    margin: 3rem;
+}
+
+//lane.tsx 
+
+.laneContainer{
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 0 -6rem 0;
+}
+.laneFiller{
+    flex: 1;
+}
+.laneIconContainer{
+    width: 30rem;
+    height: 30rem;
+}
+.laneBoxContainer{
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 0 6rem 0;
+}
+
+//sublane-panel.tsx 
+
+.sublaneContainer {
+  position: fixed;
+  margin: -10rem 0 0 -10rem;
+  z-index: -1;
+}
+
+.sublaneContent {
+  border-radius: 4rem;
+  background-color: var(--panelColorNormal);
+  backdrop-filter: var(--panelBlur);
+  color: var(--textColor);
+  flex: 1;
+  position: relative;
+  padding: 6rem;
+}
+
+.sublaneLaneContainer {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  align-content: center;
+  margin: 0 0 6rem 0;
+}
+
+.sublaneColumn {
+  padding: 0rem;
+  display: flex;
+  flex: 0 1 auto;
+}
+
+.sublaneDivider {
+  height: 100%;
+  width: 0rem;
+  color: var(--dividerColor);
+  border-width: 2px;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.1);
+  margin: 0 6rem;
+}
+
+.sublaneHorizontalDivider {
+  height: 2px;
+  width: auto;
+  color: var(--dividerColor);
+  border-width: 2px;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.1);
+  margin: 6rem -6rem;
+}
+
+.sublaneIconContainer {
+  &:hover {
+    filter: brightness(1.2) contrast(1.2);
+  }
+}
+
+.sublaneIconStyle {
+  color: var(--textColorDim);
+  width: 24rem;
+  height: 24rem;
+  margin: 3rem;
+}

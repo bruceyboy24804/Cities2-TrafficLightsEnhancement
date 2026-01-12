@@ -1,0 +1,27 @@
+.container{
+    width: 30em;
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: auto;
+}
+.leftPanelContainer{
+    width: 13.5em;
+    max-width: 13.5em;
+    background-color: var(--panelColorNormal);
+    backdrop-filter: var(--panelBlur);
+    color: var(--textColor);
+    flex: 1;
+    position: relative;
+    padding: 0.25em;
+}
+.rightPanelContainer{
+    width: 16.5em;
+    max-width: 16.5em;
+    background-color: var(--sectionBackgroundColor);
+    backdrop-filter: var(--panelBlur);
+    flex: 1;
+    position: relative;
+    padding: 0.25em;
+}

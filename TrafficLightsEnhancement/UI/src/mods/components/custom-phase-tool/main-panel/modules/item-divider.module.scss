@@ -1,0 +1,38 @@
+.container{
+    display: flex;
+    align-items: center; 
+}
+.divider {
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: auto;
+  margin: 0.25em;
+
+  &[data-invisible="true"] {
+    background-color: transparent;
+  }
+}
+.iconContainer {
+  display: flex;
+  border-radius: 0.2em;
+  &:hover {
+    filter: brightness(1.2) contrast(1.2);
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  &[data-disabled="true"] {
+    &:hover {
+      filter: none;
+      background: transparent;
+    }
+  }
+}
+.iconStyle{
+    color: var(--textColorDim);
+    width: 1.0em;
+    height: 1.0em;
+    font-size: 1.0em;
+}

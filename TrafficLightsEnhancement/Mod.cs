@@ -20,6 +20,8 @@ public class Mod : IMod
 
     public static World m_World;
 
+    public static string modName = "C2VM.TrafficLightsEnhancement";
+
     private static Game.Net.TrafficLightInitializationSystem m_TrafficLightInitializationSystem;
 
     private static Game.Simulation.TrafficLightSystem m_TrafficLightSystem;
@@ -66,7 +68,7 @@ public class Mod : IMod
     public void SystemSetup(UpdateSystem updateSystem)
     {
         m_World.GetOrCreateSystemManaged<Game.Tools.NetToolSystem>(); // Ensure NetToolSystem is created before our tool
-
+        
         var noneList = new NativeList<ComponentType>(1, Allocator.Temp);
         noneList.Add(ComponentType.ReadOnly<Components.CustomTrafficLights>());
 
@@ -95,7 +97,7 @@ public class Mod : IMod
         m_Log.Info($"Compatibility mode is set to {enable}.");
     }
 
-    public static bool IsCanary()
+    public static bool IsBeta()
     {
         #if SHOW_CANARY_BUILD_WARNING
         return true;

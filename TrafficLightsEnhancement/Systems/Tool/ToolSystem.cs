@@ -4,12 +4,15 @@ using C2VM.TrafficLightsEnhancement.Systems.Overlay;
 using Colossal.Entities;
 using Game.Net;
 using Game.Prefabs;
+using Game.Rendering;
 using Game.Tools;
 using Game.UI.Localization;
 using Game.UI.Tooltip;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Mathematics;
+using UnityEngine;
 
 namespace C2VM.TrafficLightsEnhancement.Systems.Tool;
 
@@ -40,6 +43,9 @@ public partial class ToolSystem : NetToolSystem
     private StringTooltip m_RemoveConfigurationTooltip;
 
     private StringTooltip m_RemoveTrafficLightsTooltip;
+
+    // Add a scale factor for the overlay circle (1.0 = original size, 0.7 = 70% of original)
+    private const float CircleScale = 0.7f;
 
     protected override void OnCreate()
     {
@@ -102,19 +108,27 @@ public partial class ToolSystem : NetToolSystem
                 if (originalEntity != m_RaycastResult)
                 {
                     m_RaycastResult = originalEntity;
-                    m_RenderSystem.ClearLineMesh();
-                    if (IsValidEntity(m_RaycastResult) && EntityManager.TryGetComponent<NodeGeometry>(m_RaycastResult, out var nodeGeometry))
-                    {
-                        m_RenderSystem.AddBounds(nodeGeometry.m_Bounds, new UnityEngine.Color(0.5f, 1.0f, 2.0f, 1.0f), 0.5f);
-                        m_RenderSystem.BuildLineMesh();
-                    }
                     UpdateTooltip(m_RaycastResult);
+                }
+                
+                // Draw circle every frame while hovering (OverlayRenderSystem clears each frame)
+                if (IsValidEntity(m_RaycastResult) && EntityManager.TryGetComponent<NodeGeometry>(m_RaycastResult, out var nodeGeometry))
+                {
+                    var overlayRenderSystem = World.GetOrCreateSystemManaged<OverlayRenderSystem>();
+                    var overlayBuffer = overlayRenderSystem.GetBuffer(out JobHandle dependencies);
+                    dependencies.Complete();
+                    float3 center = (nodeGeometry.m_Bounds.min + nodeGeometry.m_Bounds.max) * 0.5f;
+                    float diameter = nodeGeometry.m_Bounds.max.x - nodeGeometry.m_Bounds.min.x;
+
+                    // Apply scaling and ensure a positive non-zero diameter
+                    diameter = math.max(0.01f, diameter * CircleScale);
+
+                    overlayBuffer.DrawCircle(new Color(0.5f, 1.0f, 2.0f, 1.0f), center, diameter);
                 }
             }
             else if (m_RaycastResult != Entity.Null)
             {
                 m_RaycastResult = Entity.Null;
-                m_RenderSystem.ClearLineMesh();
                 UpdateTooltip(m_RaycastResult);
             }
             if (applyAction.WasReleasedThisFrame())

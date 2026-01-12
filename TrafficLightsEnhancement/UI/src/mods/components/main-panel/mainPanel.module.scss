@@ -1,0 +1,192 @@
+//content.tsx
+
+.contentContainer {
+  width: 18em;
+  background-color: var(--panelColorNormal);
+  backdrop-filter: var(--panelBlur);
+  color: var(--textColor);
+  flex: 1;
+  position: relative;
+  padding: 0.25em;
+  overflow-y: scroll;
+}
+.contentLabel {
+  color: var(--textColorDim);
+  display: flex;
+  flex: 1;
+}
+
+//header.tsx
+
+.headerContainer {
+  background-color: var(--panelColorDark);
+  backdrop-filter: var(--panelBlur);
+  color: var(--accentColorNormal);
+  font-size: 14rem;
+  padding: 6rem 10rem;
+  min-height: 36rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.headerImage {
+  width: 24rem;
+  height: 24rem;
+}
+
+.headerTitle {
+  text-transform: uppercase;
+  flex: 1;
+  text-align: center;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+//index.tsx
+.indexContainer {
+  position: absolute;
+  top: calc(10rem + var(--floatingToggleSize));
+  left: 0rem;
+  border-radius: 4rem;
+  overflow: hidden;
+  margin: -10rem 0 0 -10rem;
+  padding: 10rem 10rem 6rem 10rem;
+}
+
+.addMemberOverlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--panelColorNormal);
+  backdrop-filter: var(--panelBlur);
+  border-radius: 8rem;
+  padding: 16rem;
+  min-width: 300rem;
+  max-width: 400rem;
+  z-index: 1000;
+  box-shadow: 0 8rem 32rem rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.addMemberHeader {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 12rem;
+  padding-bottom: 8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.addMemberTitle {
+  font-size: var(--fontSizeM);
+  color: var(--textColor);
+  font-weight: 500;
+  flex: 1;
+}
+
+.addMemberGroupName {
+  font-size: var(--fontSizeS);
+  color: var(--accentColorNormal);
+}
+
+.addMemberMessage {
+  padding: 12rem 8rem;
+  color: var(--textColorDim);
+  font-size: var(--fontSizeS);
+  text-align: center;
+}
+
+.addMemberButtonRow {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  margin-top: 16rem;
+  padding-top: 12rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.addMemberButton {
+  padding: 8rem 24rem;
+  border-radius: 4rem;
+  font-size: var(--fontSizeS);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  border: 2px solid var(--accentColorNormal);
+  
+  &:hover {
+    transform: scale(1.02);
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.addMemberCancelButton {
+  background-color: transparent;
+  color: var(--accentColorNormal);
+  
+  &:hover {
+    background-color: rgba(138, 43, 226, 0.2);
+  }
+}
+
+.addMemberFinishButton {
+  background-color: var(--accentColorNormal);
+  color: white;
+  
+  &:hover {
+    background-color: var(--accentColorLight);
+  }
+}
+
+.memberListContainer {
+  padding: 0.5em 1em;
+}
+
+.memberListTitle {
+  font-weight: bold;
+  margin-bottom: 0.5em;
+  color: var(--textColor);
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.memberListItem {
+  padding: 0.25em 0.5em;
+  margin: 0.25em 0;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  font-size: 0.9em;
+  display: flex;
+  flex-direction: row;
+}
+
+.leaderBadge {
+  color: var(--accentColorNormal);
+  font-style: italic;
+  margin-left: 0.25em;
+}
+
+.buttonRow {
+  display: flex;
+  flex-direction: row;
+  padding: 0.5em;
+  justify-content: center;
+  
+  > * {
+    margin-left: 0.25em;
+    margin-right: 0.25em;
+  }
+}
+.hover {
+  &:hover {
+    background-color: var(--hoverColorBright);
+  }
+}

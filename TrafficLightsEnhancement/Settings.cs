@@ -280,7 +280,7 @@ public class Settings : ModSetting
 
     public bool IsNotCanary()
     {
-        return !Mod.IsCanary();
+        return !Mod.IsBeta();
     }
 
     public bool IsCompatibilityMode()

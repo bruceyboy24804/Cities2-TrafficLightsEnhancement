@@ -28,10 +28,7 @@ public class PredefinedPatternsProcessor
                 return true;
             }
 
-            case (uint)CustomTrafficLights.Patterns.SplitPhasingAdvancedObsolete:
-            {
-                return false;
-            }
+            
 
             case (uint)CustomTrafficLights.Patterns.ProtectedCentreTurn:
             {

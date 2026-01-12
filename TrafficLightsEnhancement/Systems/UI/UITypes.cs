@@ -1,3 +1,4 @@
+using System.Collections;
 using System.ComponentModel;
 using Colossal.UI.Binding;
 using Newtonsoft.Json;
@@ -128,6 +129,16 @@ public static class UITypes
         public string engineEventName;
     }
 
+    public struct ItemCustomPhaseHeader
+    {
+        [JsonProperty]
+        const string itemType = "customPhaseHeader";
+
+        public int trafficLightMode;
+
+        public int phaseCount;
+    }
+
     public struct ItemCustomPhase
     {
         [JsonProperty]
@@ -161,31 +172,64 @@ public static class UITypes
 
         public ushort pedestrianLaneOccupied;
 
+        public ushort bicycleLaneOccupied;
+
         public float weightedWaiting;
 
         public float targetDuration;
 
         public int priority;
 
-        public ushort minimumDuration;
+        public int minimumDuration;
 
-        public ushort maximumDuration;
+        public int maximumDuration;
 
         public float targetDurationMultiplier;
 
-        public float laneOccupiedMultiplier;
-
         public float intervalExponent;
-
-        public bool prioritiseTrack;
-
-        public bool prioritisePublicCar;
-
-        public bool prioritisePedestrian;
 
         public bool linkedWithNextPhase;
 
         public bool endPhasePrematurely;
+        
+        // Step change metric settings
+        public int changeMetric;
+        public float waitFlowBalance;
+        
+        // Traffic light mode (0=Dynamic/CustomPhase, 1=FixedTimed)
+        public int trafficLightMode;
+        
+        // Traffic light active states
+        public bool carActive;
+        public bool publicCarActive;
+        public bool trackActive;
+        public bool pedestrianActive;
+        public bool bicycleActive;
+        
+        // Signal delay data
+        public bool hasSignalDelays;
+        public int carOpenDelay;
+        public int carCloseDelay;
+        public int publicCarOpenDelay;
+        public int publicCarCloseDelay;
+        public int trackOpenDelay;
+        public int trackCloseDelay;
+        public int pedestrianOpenDelay;
+        public int pedestrianCloseDelay;
+        public int bicycleOpenDelay;
+        public int bicycleCloseDelay;
+        
+        // TMPE-style vehicle weights
+        public float carWeight;
+        public float publicCarWeight;
+        public float trackWeight;
+        public float pedestrianWeight;
+        public float bicycleWeight;
+        public float smoothingFactor;
+        
+        // Flow/wait ratios (read-only statistics)
+        public float flowRatio;
+        public float waitRatio;
     }
 
     public struct UpdateCustomPhaseData
@@ -197,6 +241,46 @@ public static class UITypes
         public string key;
 
         public double value;
+    }
+
+    public struct SetSignalDelayData
+    {
+        public int edgeIndex;
+        public int edgeVersion;
+        public int openDelay;
+        public int closeDelay;
+        public bool isEnabled;
+    }
+
+    public struct RemoveSignalDelayData
+    {
+        public int edgeIndex;
+        public int edgeVersion;
+    }
+
+    public struct SignalDelayInfo : IJsonWritable
+    {
+        public int edgeIndex;
+        public int edgeVersion;
+        public int openDelay;
+        public int closeDelay;
+        public bool isEnabled;
+
+        public void Write(IJsonWriter writer)
+        {
+            writer.TypeBegin(typeof(SignalDelayInfo).FullName);
+            writer.PropertyName("edgeIndex");
+            writer.Write(edgeIndex);
+            writer.PropertyName("edgeVersion");
+            writer.Write(edgeVersion);
+            writer.PropertyName("openDelay");
+            writer.Write(openDelay);
+            writer.PropertyName("closeDelay");
+            writer.Write(closeDelay);
+            writer.PropertyName("isEnabled");
+            writer.Write(isEnabled);
+            writer.TypeEnd();
+        }
     }
 
     public struct WorldPosition : IJsonWritable
@@ -320,13 +404,59 @@ public static class UITypes
         }
     }
 
+    public struct ItemTrafficGroup
+    {
+        [JsonProperty]
+        const string itemType = "trafficGroup";
+
+        public int groupIndex;
+
+        public int groupVersion;
+
+        public string name;
+
+        public int memberCount;
+
+        public bool isCoordinated;
+
+        public bool isCurrentJunctionInGroup;
+
+        public bool greenWaveEnabled;
+
+        public float greenWaveSpeed;
+
+        public float greenWaveOffset;
+        
+        public int leaderIndex;
+        
+        public int leaderVersion;
+        
+        public float distanceToLeader;
+        
+        public int phaseOffset;
+        
+        public int signalDelay;
+        
+        public bool isCurrentJunctionLeader;
+        
+        public int currentJunctionIndex;
+        
+        public int currentJunctionVersion;
+        
+        public ArrayList members;
+        
+        public int previousState;
+        
+        public float cycleLength;
+    }
+
     public static ItemRadio MainPanelItemPattern(string label, uint pattern, uint selectedPattern)
     {
-        return new ItemRadio{label = label, key = "pattern", value = pattern.ToString(), engineEventName = "C2VM.TLE.CallMainPanelUpdatePattern", isChecked = (selectedPattern & 0xFFFF) == pattern};
+        return new ItemRadio{label = label, key = "pattern", value = pattern.ToString(), engineEventName = "C2VM.TrafficLightsEnhancement.TRIGGER:CallMainPanelUpdatePattern", isChecked = (selectedPattern & 0xFFFF) == pattern};
     }
 
     public static ItemCheckbox MainPanelItemOption(string label, uint option, uint selectedPattern)
     {
-        return new ItemCheckbox{label = label, key = option.ToString(), value = ((selectedPattern & option) != 0).ToString(), isChecked = (selectedPattern & option) != 0, engineEventName = "C2VM.TLE.CallMainPanelUpdateOption"};
+        return new ItemCheckbox{label = label, key = option.ToString(), value = ((selectedPattern & option) != 0).ToString(), isChecked = (selectedPattern & option) != 0, engineEventName = "C2VM.TrafficLightsEnhancement.TRIGGER:CallMainPanelUpdateOption"};
     }
 }
