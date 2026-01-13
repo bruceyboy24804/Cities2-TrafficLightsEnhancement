@@ -10,6 +10,8 @@ public partial struct NodeUtils
 {
     public struct EdgeInfo : IJsonWritable
     {
+        public Entity m_Node;
+
         public Entity m_Edge;
 
         public WorldPosition m_Position;
@@ -49,6 +51,8 @@ public partial struct NodeUtils
         public void Write(IJsonWriter writer)
         {
             writer.TypeBegin(typeof(EdgeInfo).FullName);
+            writer.PropertyName("m_Node");
+            writer.Write(m_Node);
             writer.PropertyName("m_Edge");
             writer.Write(m_Edge);
             writer.PropertyName("m_Position");

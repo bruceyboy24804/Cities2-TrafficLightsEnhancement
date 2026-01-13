@@ -27,9 +27,6 @@ public class PredefinedPatternsProcessor
                 }
                 return true;
             }
-
-            
-
             case (uint)CustomTrafficLights.Patterns.ProtectedCentreTurn:
             {
                 int ways = 0;
@@ -50,7 +47,14 @@ public class PredefinedPatternsProcessor
                 }
                 return false;
             }
-
+            case (uint)CustomTrafficLights.Patterns.SplitPhasingProtectedLeft:
+            {
+                if (edgeInfoArray.Length > 7)
+                {
+                    return false;
+                }
+                return true;
+            }
             default:
             {
                 return true;
@@ -309,7 +313,160 @@ public class PredefinedPatternsProcessor
         CheckPedestrianLanes(ref job, subLanes, ref groupCount);
         UpdateLaneSignal(ref job, subLanes, ref trafficLights);
     }
+    public static void SetupSplitPhasingProtectedLeft(ref InitializeTrafficLightsJob job, DynamicBuffer<ConnectedEdge> connectedEdges, DynamicBuffer<SubLane> subLanes, out int groupCount, ref TrafficLights trafficLights)
+    {
+        NativeHashMap<Entity, NodeUtils.LaneConnection> laneConnectionMap = NodeUtils.GetLaneConnectionMap(Allocator.Temp, subLanes, connectedEdges, job.m_ExtraTypeHandle.m_SubLane, job.m_ExtraTypeHandle.m_Lane);
+        groupCount = 0;
 
+        for (int i = 0; i < subLanes.Length; i++)
+        {
+            Entity subLane = subLanes[i].m_SubLane;
+            if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal))
+            {
+                continue;
+            }
+            laneSignal.m_GroupMask = 0;
+            job.m_LaneSignalData[subLane] = laneSignal;
+        }
+
+       
+
+        if (connectedEdges.Length >= 1)
+        {
+            Entity edge = connectedEdges[0].m_Edge;
+            bool modified = false;
+            for (int j = 0; j < subLanes.Length; j++)
+            {
+                Entity subLane = subLanes[j].m_SubLane;
+                if (laneConnectionMap[subLane].m_SourceEdge != edge) continue;
+                if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal)) continue;
+                if (!job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane)) continue;
+                        
+                var carLane = job.m_CarLaneData[laneConnectionMap[subLane].m_SourceSubLane];
+                bool isLeftTurn = job.m_LeftHandTraffic && 
+                    (carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.GentleTurnLeft)) != 0;
+                bool isStraight = (carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.TurnRight | 
+                    CarLaneFlags.GentleTurnLeft | CarLaneFlags.GentleTurnRight | CarLaneFlags.UTurnLeft | CarLaneFlags.UTurnRight)) == 0;
+                        
+                if (isStraight || isLeftTurn)
+                {
+                    laneSignal.m_GroupMask |= (ushort)(1 << groupCount);
+                    job.m_LaneSignalData[subLane] = laneSignal;
+                    modified = true;
+                }
+            }
+            if (modified) groupCount++;
+        }
+
+        if (connectedEdges.Length >= 2)
+        {
+            Entity edge = connectedEdges[1].m_Edge;
+            bool modified = false;
+            for (int j = 0; j < subLanes.Length; j++)
+            {
+                Entity subLane = subLanes[j].m_SubLane;
+                if (laneConnectionMap[subLane].m_SourceEdge != edge) continue;
+                if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal)) continue;
+                
+                if (job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane))
+                {
+                    var carLane = job.m_CarLaneData[laneConnectionMap[subLane].m_SourceSubLane];
+                    bool isStraight = (carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.TurnRight | 
+                        CarLaneFlags.GentleTurnLeft | CarLaneFlags.GentleTurnRight | CarLaneFlags.UTurnLeft | CarLaneFlags.UTurnRight)) == 0;
+                            
+                    if (isStraight)
+                    {
+                        laneSignal.m_GroupMask |= (ushort)(1 << groupCount);
+                        job.m_LaneSignalData[subLane] = laneSignal;
+                        modified = true;
+                    }
+                }
+                else if (job.m_PedestrianLaneData.HasComponent(subLane))
+                {
+                    laneSignal.m_GroupMask |= (ushort)(1 << groupCount);
+                    job.m_LaneSignalData[subLane] = laneSignal;
+                    modified = true;
+                }
+            }
+            if (modified) groupCount++;
+        }
+
+        if (connectedEdges.Length >= 3)
+        {
+            Entity edge = connectedEdges[2].m_Edge;
+            bool modified = false;
+            for (int j = 0; j < subLanes.Length; j++)
+            {
+                Entity subLane = subLanes[j].m_SubLane;
+                if (laneConnectionMap[subLane].m_SourceEdge != edge) continue;
+                if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal)) continue;
+                if (!job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane)) continue;
+                        
+                var carLane = job.m_CarLaneData[laneConnectionMap[subLane].m_SourceSubLane];
+                bool isLeftTurn = job.m_LeftHandTraffic && 
+                    (carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.GentleTurnLeft)) != 0;
+                bool isStraight = (carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.TurnRight | 
+                    CarLaneFlags.GentleTurnLeft | CarLaneFlags.GentleTurnRight | CarLaneFlags.UTurnLeft | CarLaneFlags.UTurnRight)) == 0;
+                        
+                if (isStraight || isLeftTurn)
+                {
+                    laneSignal.m_GroupMask |= (ushort)(1 << groupCount);
+                    job.m_LaneSignalData[subLane] = laneSignal;
+                    modified = true;
+                }
+            }
+            if (modified) groupCount++;
+        }
+
+        if (connectedEdges.Length >= 4)
+        {
+            Entity edge = connectedEdges[3].m_Edge;
+            bool modified = false;
+            for (int j = 0; j < subLanes.Length; j++)
+            {
+                Entity subLane = subLanes[j].m_SubLane;
+                if (laneConnectionMap[subLane].m_SourceEdge != edge) continue;
+                if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal)) continue;
+                
+                if (job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane))
+                {
+                    laneSignal.m_GroupMask |= (ushort)(1 << groupCount);
+                    job.m_LaneSignalData[subLane] = laneSignal;
+                    modified = true;
+                }
+                else if (job.m_PedestrianLaneData.HasComponent(subLane))
+                {
+                    laneSignal.m_GroupMask |= (ushort)(1 << groupCount);
+                    job.m_LaneSignalData[subLane] = laneSignal;
+                    modified = true;
+                }
+            }
+            if (modified) groupCount++;
+        }
+
+        for (int i = 0; i < connectedEdges.Length; i++)
+        {
+            Entity edge = connectedEdges[i].m_Edge;
+            for (int j = 0; j < subLanes.Length; j++)
+            {
+                Entity subLane = subLanes[j].m_SubLane;
+                if (laneConnectionMap[subLane].m_SourceEdge != edge) continue;
+                if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal) || !job.m_ExtraTypeHandle.m_TrackLane.HasComponent(subLane)) continue;
+                if (job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane)) continue;
+                
+                // Add track lanes to all phases
+                laneSignal.m_GroupMask |= (ushort)((1 << groupCount) - 1);
+                job.m_LaneSignalData[subLane] = laneSignal;
+            }
+        }
+
+        SetupNonOverlapLanes(ref job, subLanes, groupCount, laneConnectionMap);
+        SetupMasterLanes(ref job, subLanes);
+        RemoveDuplicateGroups(ref job, subLanes, ref groupCount);
+        SetupPedestrianLanes(ref job, subLanes, groupCount, laneConnectionMap);
+        CheckPedestrianLanes(ref job, subLanes, ref groupCount);
+        UpdateLaneSignal(ref job, subLanes, ref trafficLights);
+    }
     private static void SetupNonOverlapLanes(ref InitializeTrafficLightsJob job, DynamicBuffer<SubLane> subLanes, int groupCount, NativeHashMap<Entity, NodeUtils.LaneConnection> laneConnectionMap)
     {
         for (int i = 0; i < subLanes.Length; i++)
@@ -329,7 +486,6 @@ public class PredefinedPatternsProcessor
             }
             if (!job.m_Overlaps.TryGetBuffer(subLane, out var laneOverlapBuffer) || laneOverlapBuffer.Length == 0)
             {
-                // Set all groups to green since there is no overlap
                 laneSignal.m_GroupMask |= (ushort)((1 << groupCount) - 1);
             }
             else
@@ -465,7 +621,6 @@ public class PredefinedPatternsProcessor
             }
             if (!job.m_Overlaps.TryGetBuffer(subLane, out var laneOverlapBuffer) || laneOverlapBuffer.Length == 0)
             {
-                // Set all groups to green since there is no overlap
                 laneSignal.m_GroupMask |= (ushort)((1 << groupCount) - 1);
             }
             else

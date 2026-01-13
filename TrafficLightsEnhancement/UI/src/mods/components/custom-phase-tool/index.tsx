@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
-import { bindValue, call, useValue } from "cs2/api";
+import { useValue } from "cs2/api";
+import { activeEditingCustomPhaseIndex as activeEditingBinding, edgeInfo, screenPoint, callAddWorldPosition, callRemoveWorldPosition } from "bindings";
 
 import { EdgeGroupMaskOptions } from "../../constants";
 
@@ -9,21 +10,21 @@ import SubLanePanel from "./sublane-panel";
 import { EdgeInfo, ScreenPointMap } from "mods/general";
 
 export default function CustomPhaseTool() {
-  const activeEditingCustomPhaseIndex = useValue(bindValue("C2VM.TLE", "GetActiveEditingCustomPhaseIndex", -1));
-  const edgeInfoList = useValue(bindValue<EdgeInfo[]>("C2VM.TLE", "GetEdgeInfo", []));
+  const activeEditingCustomPhaseIndex = useValue(activeEditingBinding.binding);
+  const edgeInfoList = useValue(edgeInfo.binding);
 
   useEffect(() => {
     const edgePositionArray = JSON.stringify(edgeInfoList.filter(edge => (edge.m_EdgeGroupMask.m_Options & EdgeGroupMaskOptions.PerLaneSignal) == 0).map(item => item.m_Position));
     const subLanePositionArray = JSON.stringify(edgeInfoList.filter(edge => (edge.m_EdgeGroupMask.m_Options & EdgeGroupMaskOptions.PerLaneSignal) != 0).map(item => item.m_SubLaneInfoList.map(subLane => subLane.m_Position)).flat());
-    call("C2VM.TLE", "CallAddWorldPosition", edgePositionArray);
-    call("C2VM.TLE", "CallAddWorldPosition", subLanePositionArray);
+    callAddWorldPosition(edgePositionArray);
+    callAddWorldPosition(subLanePositionArray);
     return () => {
-      call("C2VM.TLE", "CallRemoveWorldPosition", edgePositionArray);
-      call("C2VM.TLE", "CallRemoveWorldPosition", subLanePositionArray);
+      callRemoveWorldPosition(edgePositionArray);
+      callRemoveWorldPosition(subLanePositionArray);
     };
   }, [edgeInfoList]);
 
-  const screenPointMap = useValue<ScreenPointMap>(bindValue("C2VM.TLE", "GetScreenPoint", {}));
+  const screenPointMap = useValue<ScreenPointMap>(screenPoint.binding);
 
   return (
     <>

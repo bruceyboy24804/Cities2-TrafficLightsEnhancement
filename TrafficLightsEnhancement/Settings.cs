@@ -89,10 +89,10 @@ public class Settings : ModSetting
     public bool m_CompatibilityMode { get; private set; }
 
     [SettingsUISection(kTabGeneral, kGroupVersion)]
-    public string m_ReleaseChannel => IsNotCanary() ? "Alpha" : "Canary";
+    public string m_ReleaseChannel => IsNotBeta() ? "Stable" : "Beta";
 
     [SettingsUISection(kTabGeneral, kGroupVersion)]
-    public string m_TleVersion => Mod.m_InformationalVersion.Substring(0, 20);
+    public string m_TleVersion => Mod.Version;
 
     [SettingsUISection(kTabGeneral, kGroupVersion)]
     public string m_LaneSystemVersion => C2VM.CommonLibraries.LaneSystem.Mod.m_InformationalVersion.Substring(0, 20);
@@ -141,7 +141,7 @@ public class Settings : ModSetting
         {
             if (value == true)
             {
-                m_SuppressCanaryWarningVersion = Mod.m_InformationalVersion;
+                m_SuppressCanaryWarningVersion = Mod.InformationalVersion;
                 Systems.UI.UISystem.m_MainPanelBinding?.Update();
             }
         }
@@ -278,7 +278,7 @@ public class Settings : ModSetting
         return GameManager.instance.gameMode != Game.GameMode.Game;
     }
 
-    public bool IsNotCanary()
+    public bool IsNotBeta()
     {
         return !Mod.IsBeta();
     }

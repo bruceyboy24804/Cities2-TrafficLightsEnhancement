@@ -57,6 +57,7 @@ public partial struct NodeUtils
             EdgeInfo edgeInfo = default;
             Entity edgeEntity = connectedEdge.m_Edge;
             float3 edgePosition = GetEdgePosition(nodeEntity, edgeEntity, edgeLookup, edgeGeometryLookup);
+            edgeInfo.m_Node = nodeEntity;
             edgeInfo.m_Edge = edgeEntity;
             edgeInfo.m_Position = edgePosition;
             CustomPhaseUtils.TryGet(edgeGroupMaskBuffer, edgeEntity, edgePosition, out edgeInfo.m_EdgeGroupMask);

@@ -134,7 +134,7 @@ public class LocalisationUtils
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_DefaultExclusivePedestrian"), this.GetString("DefaultExclusivePedestrianDesc"));
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_ForceNodeUpdate"), this.GetString("ForceAllNodesUpdateDesc"));
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_ReleaseChannel"), Mod.m_Settings.m_ReleaseChannel);
-        dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_TleVersion"), Mod.m_InformationalVersion);
+        dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_TleVersion"), Mod.InformationalVersion);
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_LaneSystemVersion"), C2VM.CommonLibraries.LaneSystem.Mod.m_InformationalVersion);
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_SuppressCanaryWarning"), this.GetString("SuppressCanaryWarningDesc"));
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_MainPanelToggleKeyboardBinding"), this.GetString("MainPanelToggleKeyboardBindingDesc"));
@@ -145,5 +145,6 @@ public class LocalisationUtils
         dictionary.Add("C2VM.TLE.Tooltips.Configure", this.GetString("TooltipConfigure"));
         dictionary.Add("C2VM.TLE.Tooltips.RemoveTLEConfiguration", this.GetString("TooltipRemoveTLEConfiguration"));
         dictionary.Add("C2VM.TLE.Tooltips.RemoveTrafficLights", this.GetString("TooltipRemoveTrafficLights"));
+        dictionary.Add("C2VM.TLE.Tooltips.SelectGroupMember", this.GetString("TooltipSelectGroupMember"));
     }
 }

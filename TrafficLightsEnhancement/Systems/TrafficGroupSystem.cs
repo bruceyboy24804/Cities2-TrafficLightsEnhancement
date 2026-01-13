@@ -3,11 +3,13 @@ using Colossal.Logging;
 using Game;
 using Game.Net;
 using Game.Simulation;
+using Game.UI.Localization;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using System.Collections.Generic;
 using C2VM.TrafficLightsEnhancement.Domain;
+using Colossal.Entities;
 using Game.SceneFlow;
 
 namespace C2VM.TrafficLightsEnhancement.Systems;
@@ -37,10 +39,8 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 	protected override void OnUpdate()
 	{
-		// Get current game tick (frame index is the tick count)
 		float currentTick = m_SimulationSystem.frameIndex;
 		
-		// Process all coordinated groups
 		var groups = m_GroupQuery.ToEntityArray(Allocator.Temp);
 		var groupComponents = m_GroupQuery.ToComponentDataArray<TrafficGroup>(Allocator.Temp);
 		
@@ -54,17 +54,12 @@ public partial class TrafficGroupSystem : GameSystemBase
 				continue;
 			}
 			
-			// Update cycle timer (in game ticks)
 			group.m_CycleTimer += 1f;
 			if (group.m_CycleTimer >= group.m_CycleLength)
 			{
 				group.m_CycleTimer = 0f;
 			}
-			
-			// Apply leader-follower coordination
 			ApplyCoordination(groupEntity, group);
-			
-			// Save updated group data
 			EntityManager.SetComponentData(groupEntity, group);
 		}
 		
@@ -74,7 +69,6 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 	public Entity CreateGroup(string name = null)
 	{
-		// Generate auto name if not provided
 		if (string.IsNullOrEmpty(name))
 		{
 			var allGroups = GetAllGroups();
@@ -414,7 +408,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		{
 			Entity leaderEntity = GetGroupLeader(groupEntity);
 			if (leaderEntity != Entity.Null && EntityManager.HasBuffer<CustomPhaseData>(leaderEntity) && 
-			    EntityManager.GetBuffer<CustomPhaseData>(leaderEntity).Length > 0)
+			    EntityManager.TryGetBuffer<CustomPhaseData>(leaderEntity, false ,out var phases) && phases.Length > 0)
 			{
 				CalculateEnhancedGreenWaveTiming(groupEntity);
 			}
@@ -422,8 +416,6 @@ public partial class TrafficGroupSystem : GameSystemBase
 			{
 				CalculateGreenWaveTiming(groupEntity);
 			}
-			
-			// Immediately sync members to their new phase offsets if coordinated
 			if (group.m_IsCoordinated && leaderEntity != Entity.Null && EntityManager.HasComponent<TrafficLights>(leaderEntity))
 			{
 				var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
@@ -447,7 +439,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		{
 			Entity leaderEntity = GetGroupLeader(groupEntity);
 			if (leaderEntity != Entity.Null && EntityManager.HasBuffer<CustomPhaseData>(leaderEntity) && 
-			    EntityManager.GetBuffer<CustomPhaseData>(leaderEntity).Length > 0)
+			    EntityManager.TryGetBuffer<CustomPhaseData>(leaderEntity, false ,out var phases) && phases.Length > 0)
 			{
 				CalculateEnhancedGreenWaveTiming(groupEntity);
 			}
@@ -456,7 +448,6 @@ public partial class TrafficGroupSystem : GameSystemBase
 				CalculateGreenWaveTiming(groupEntity);
 			}
 			
-			// Immediately sync members to their new phase offsets if coordinated
 			if (group.m_IsCoordinated && leaderEntity != Entity.Null && EntityManager.HasComponent<TrafficLights>(leaderEntity))
 			{
 				var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
@@ -480,7 +471,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		{
 			Entity leaderEntity = GetGroupLeader(groupEntity);
 			if (leaderEntity != Entity.Null && EntityManager.HasBuffer<CustomPhaseData>(leaderEntity) && 
-			    EntityManager.GetBuffer<CustomPhaseData>(leaderEntity).Length > 0)
+			    EntityManager.TryGetBuffer<CustomPhaseData>(leaderEntity, false ,out var phases) && phases.Length > 0)
 			{
 				CalculateEnhancedGreenWaveTiming(groupEntity);
 			}
@@ -489,7 +480,6 @@ public partial class TrafficGroupSystem : GameSystemBase
 				CalculateGreenWaveTiming(groupEntity);
 			}
 			
-			// Immediately sync members to their new phase offsets if coordinated
 			if (group.m_IsCoordinated && leaderEntity != Entity.Null && EntityManager.HasComponent<TrafficLights>(leaderEntity))
 			{
 				var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
@@ -517,7 +507,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			{
 				Entity leaderEntity = GetGroupLeader(groupEntity);
 				if (leaderEntity != Entity.Null && EntityManager.HasBuffer<CustomPhaseData>(leaderEntity) && 
-				    EntityManager.GetBuffer<CustomPhaseData>(leaderEntity).Length > 0)
+				    EntityManager.TryGetBuffer<CustomPhaseData>(leaderEntity, false ,out var phases) && phases.Length > 0)
 				{
 					CalculateEnhancedGreenWaveTiming(groupEntity);
 				}
@@ -698,7 +688,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			return 0f;
 		}
 
-		var phaseBuffer = EntityManager.GetBuffer<CustomPhaseData>(junctionEntity);
+		EntityManager.TryGetBuffer<CustomPhaseData>(junctionEntity, false, out var phaseBuffer);
 		if (phaseBuffer.Length == 0)
 		{
 			return 0f;
@@ -743,11 +733,11 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 		// For non-leaders, check compatibility
 		float cycleDifference = math.abs(group.m_CycleLength - junctionCycleLength);
-		if (cycleDifference > 2f) // Allow 2 tick tolerance
+		/*if (cycleDifference > 2f) // Allow 2 tick tolerance
 		{
-			var messageDialog = new MessageDialog($"TrafficGroupSystem: Junction {junctionEntity} has cycle length {junctionCycleLength} but group expects {group.m_CycleLength}. ");
+			var messageDialog = new MessageDialog($"Junction {junctionEntity} has cycle length {junctionCycleLength} but group expects {group.m_CycleLength}. ");
 			GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
-		}
+		}*/
 	}
 
 	
@@ -787,11 +777,11 @@ public partial class TrafficGroupSystem : GameSystemBase
 			if (memberCycleLength > 0)
 			{
 				float cycleDifference = math.abs(leaderCycleLength - memberCycleLength);
-				if (cycleDifference > 2f)
+				/*if (cycleDifference > 2f)
 				{
 					var messageDialog = new MessageDialog($"TrafficGroupSystem: Member {memberEntity} cycle length ({memberCycleLength}) differs from leader ({leaderCycleLength})");
 					GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
-				}
+				}*/
 			}
 		}
 		members.Dispose();
@@ -852,7 +842,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		float mainPhaseStartTime = 0f;
 		if (EntityManager.HasBuffer<CustomPhaseData>(leaderEntity))
 		{
-			var leaderPhases = EntityManager.GetBuffer<CustomPhaseData>(leaderEntity);
+			EntityManager.TryGetBuffer<CustomPhaseData>(leaderEntity, false, out var leaderPhases);
 			for (int i = 0; i < math.min(mainPhaseIndex, leaderPhases.Length); i++)
 			{
 				mainPhaseStartTime += leaderPhases[i].m_MaximumDuration;
@@ -905,7 +895,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 	{
 		if (EntityManager.HasBuffer<CustomPhaseData>(junctionEntity))
 		{
-			return EntityManager.GetBuffer<CustomPhaseData>(junctionEntity).Length;
+			return EntityManager.TryGetBuffer<CustomPhaseData>(junctionEntity, false, out var phases) ? phases.Length : 0;
 		}
 		return 1;
 	}
@@ -1093,7 +1083,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		{
 			Entity leaderEntity = GetGroupLeader(targetGroupEntity);
 			if (leaderEntity != Entity.Null && EntityManager.HasBuffer<CustomPhaseData>(leaderEntity) && 
-			    EntityManager.GetBuffer<CustomPhaseData>(leaderEntity).Length > 0)
+			    EntityManager.TryGetBuffer<CustomPhaseData>(leaderEntity, false, out var phases) && phases.Length > 0)
 			{
 				CalculateEnhancedGreenWaveTiming(targetGroupEntity);
 			}
@@ -1116,14 +1106,14 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 		if (!EntityManager.HasComponent<TrafficGroupMember>(newLeaderEntity))
 		{
-			m_Log.Warn($"TrafficGroupSystem.SetGroupLeader: Entity {newLeaderEntity} is not a group member");
+			m_Log.Warn($"Entity {newLeaderEntity} is not a group member");
 			return false;
 		}
 
 		var newLeaderMember = EntityManager.GetComponentData<TrafficGroupMember>(newLeaderEntity);
 		if (newLeaderMember.m_GroupEntity != groupEntity)
 		{
-			m_Log.Warn($"TrafficGroupSystem.SetGroupLeader: Entity {newLeaderEntity} is not in group {groupEntity}");
+			m_Log.Warn($"Entity {newLeaderEntity} is not in group {groupEntity}");
 			return false;
 		}
 
@@ -1155,7 +1145,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		if (group.m_GreenWaveEnabled)
 		{
 			if (EntityManager.HasBuffer<CustomPhaseData>(newLeaderEntity) && 
-			    EntityManager.GetBuffer<CustomPhaseData>(newLeaderEntity).Length > 0)
+			    EntityManager.TryGetBuffer<CustomPhaseData>(newLeaderEntity, false, out var phases) && phases.Length > 0)
 			{
 				CalculateEnhancedGreenWaveTiming(groupEntity);
 			}
@@ -1210,11 +1200,99 @@ public partial class TrafficGroupSystem : GameSystemBase
 		members.Dispose();
 	}
 
+	private bool ValidatePhaseSyncCompatibility(Entity sourceJunction, Entity targetJunction, out string errorMessage)
+	{
+		errorMessage = "";
+
+		// Get source pattern
+		CustomTrafficLights.Patterns sourcePattern = CustomTrafficLights.Patterns.Vanilla;
+		bool sourceHasCustomLights = EntityManager.HasComponent<CustomTrafficLights>(sourceJunction);
+		if (sourceHasCustomLights)
+		{
+			var sourceLights = EntityManager.GetComponentData<CustomTrafficLights>(sourceJunction);
+			sourcePattern = sourceLights.GetPatternOnly();
+		}
+
+		// Get target pattern
+		CustomTrafficLights.Patterns targetPattern = CustomTrafficLights.Patterns.Vanilla;
+		bool targetHasCustomLights = EntityManager.HasComponent<CustomTrafficLights>(targetJunction);
+		if (targetHasCustomLights)
+		{
+			var targetLights = EntityManager.GetComponentData<CustomTrafficLights>(targetJunction);
+			targetPattern = targetLights.GetPatternOnly();
+		}
+
+		// For CustomPhase pattern - both must have CustomPhase
+		if (sourcePattern == CustomTrafficLights.Patterns.CustomPhase)
+		{
+			if (targetPattern != CustomTrafficLights.Patterns.CustomPhase)
+			{
+				errorMessage = "Cannot sync phases: Source intersection uses Custom Phases but target intersection does not.\n\n" +
+					"Both intersections must be set to Custom Phases to sync phase configurations.";
+				return false;
+			}
+
+			// Also verify both have phase data
+			bool sourceHasPhases = EntityManager.HasBuffer<CustomPhaseData>(sourceJunction) && 
+				EntityManager.GetBuffer<CustomPhaseData>(sourceJunction).Length > 0;
+			bool targetHasPhases = EntityManager.HasBuffer<CustomPhaseData>(targetJunction) && 
+				EntityManager.GetBuffer<CustomPhaseData>(targetJunction).Length > 0;
+
+			if (!sourceHasPhases)
+			{
+				errorMessage = "Cannot sync phases: Source intersection has no custom phase data configured.";
+				return false;
+			}
+		}
+
+		// For predefined patterns - target must also have a predefined pattern (not Vanilla)
+		if (sourcePattern != CustomTrafficLights.Patterns.CustomPhase && 
+			sourcePattern != CustomTrafficLights.Patterns.Vanilla)
+		{
+			if (targetPattern == CustomTrafficLights.Patterns.Vanilla)
+			{
+				string sourcePatternName = GetPatternDisplayName(sourcePattern);
+				errorMessage = $"Cannot sync phases: Target intersection has no pattern configured.\n\n" +
+					$"Source intersection: {sourcePatternName}\n" +
+					$"Target intersection: Vanilla (no pattern)\n\n" +
+					"Target intersection must have a predefined pattern to sync.";
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private string GetPatternDisplayName(CustomTrafficLights.Patterns pattern)
+	{
+		return pattern switch
+		{
+			CustomTrafficLights.Patterns.Vanilla => "Vanilla",
+			CustomTrafficLights.Patterns.SplitPhasing => "Split Phasing",
+			CustomTrafficLights.Patterns.ProtectedCentreTurn => "Protected Turns",
+			CustomTrafficLights.Patterns.SplitPhasingProtectedLeft => "Split Phasing Protected Left",
+			CustomTrafficLights.Patterns.CustomPhase => "Custom Phases",
+			CustomTrafficLights.Patterns.FixedTimed => "Fixed Timed",
+			_ => pattern.ToString()
+		};
+	}
+
 	
 	public bool CopyPhasesToJunction(Entity sourceJunction, Entity targetJunction)
 	{
 		if (sourceJunction == Entity.Null || targetJunction == Entity.Null)
 		{
+			return false;
+		}
+
+		// Validate pattern compatibility before copying
+		if (!ValidatePhaseSyncCompatibility(sourceJunction, targetJunction, out string errorMessage))
+		{
+			var messageDialog = new MessageDialog(
+				"Phase Sync Not Allowed",
+				errorMessage,
+				LocalizedString.Id("Common.OK"));
+			GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
 			return false;
 		}
 
@@ -1239,7 +1317,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		// Copy CustomPhaseData if source has it (for custom/fixed-timed patterns)
 		if (EntityManager.HasBuffer<CustomPhaseData>(sourceJunction))
 		{
-			var sourcePhases = EntityManager.GetBuffer<CustomPhaseData>(sourceJunction);
+			EntityManager.TryGetBuffer<CustomPhaseData>(sourceJunction, false, out var sourcePhases);
 			if (sourcePhases.Length > 0)
 			{
 				// Ensure target has a phase buffer
@@ -1251,12 +1329,10 @@ public partial class TrafficGroupSystem : GameSystemBase
 				var targetPhases = EntityManager.GetBuffer<CustomPhaseData>(targetJunction);
 				targetPhases.Clear();
 
-				// Copy each phase's timing configuration
 				for (int i = 0; i < sourcePhases.Length; i++)
 				{
 					var sourcePhase = sourcePhases[i];
 					
-					// Create new phase with copied timing settings
 					var newPhase = new CustomPhaseData
 					{
 						m_MinimumDuration = sourcePhase.m_MinimumDuration,
@@ -1266,7 +1342,6 @@ public partial class TrafficGroupSystem : GameSystemBase
 						m_LaneOccupiedMultiplier = sourcePhase.m_LaneOccupiedMultiplier,
 						m_IntervalExponent = sourcePhase.m_IntervalExponent,
 						m_Options = sourcePhase.m_Options & ~CustomPhaseData.Options.EndPhasePrematurely,
-						// Reset runtime values
 						m_TurnsSinceLastRun = 0,
 						m_LowFlowTimer = 0,
 						m_LowPriorityTimer = 0,
@@ -1278,15 +1353,14 @@ public partial class TrafficGroupSystem : GameSystemBase
 			}
 		}
 
-		// Copy EdgeGroupMask (signal configurations) using positional mapping
-		// Similar to TMPE's approach: sort edges clockwise and map by position
+		
 		if (EntityManager.HasBuffer<EdgeGroupMask>(sourceJunction) && 
 		    EntityManager.HasBuffer<ConnectedEdge>(sourceJunction) &&
 		    EntityManager.HasBuffer<ConnectedEdge>(targetJunction))
 		{
-			var sourceSignals = EntityManager.GetBuffer<EdgeGroupMask>(sourceJunction);
-			var sourceConnectedEdges = EntityManager.GetBuffer<ConnectedEdge>(sourceJunction);
-			var targetConnectedEdges = EntityManager.GetBuffer<ConnectedEdge>(targetJunction);
+			EntityManager.TryGetBuffer<EdgeGroupMask>(sourceJunction, false, out var sourceSignals);
+			EntityManager.TryGetBuffer<ConnectedEdge>(sourceJunction, false, out var sourceConnectedEdges);
+			EntityManager.TryGetBuffer<ConnectedEdge>(targetJunction, false, out var targetConnectedEdges);
 			
 			// Check if edge counts match - required for 1:1 position mapping
 			if (sourceConnectedEdges.Length != targetConnectedEdges.Length)
@@ -1300,7 +1374,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 					EntityManager.AddBuffer<EdgeGroupMask>(targetJunction);
 				}
 				
-				var targetSignals = EntityManager.GetBuffer<EdgeGroupMask>(targetJunction);
+				EntityManager.TryGetBuffer<EdgeGroupMask>(targetJunction, false, out var targetSignals);
 				targetSignals.Clear();
 				
 				var edgeLookup = GetComponentLookup<Edge>(true);
@@ -1378,14 +1452,14 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 		if (EntityManager.HasBuffer<SubLaneGroupMask>(sourceJunction))
 		{
-			var sourceSubLaneSignals = EntityManager.GetBuffer<SubLaneGroupMask>(sourceJunction);
+			EntityManager.TryGetBuffer<SubLaneGroupMask>(sourceJunction, false, out var sourceSubLaneSignals);
 			
 			if (!EntityManager.HasBuffer<SubLaneGroupMask>(targetJunction))
 			{
 				EntityManager.AddBuffer<SubLaneGroupMask>(targetJunction);
 			}
 			
-			var targetSubLaneSignals = EntityManager.GetBuffer<SubLaneGroupMask>(targetJunction);
+			EntityManager.TryGetBuffer<SubLaneGroupMask>(targetJunction, false, out var targetSubLaneSignals);
 			
 			
 			if (sourceSubLaneSignals.Length == targetSubLaneSignals.Length)
@@ -1419,11 +1493,11 @@ public partial class TrafficGroupSystem : GameSystemBase
 		Entity leaderEntity = GetGroupLeader(groupEntity);
 		if (leaderEntity == Entity.Null || !EntityManager.HasBuffer<CustomPhaseData>(leaderEntity))
 		{
-			m_Log.Warn($"TrafficGroupSystem.MatchPhaseDurationsToLeader: Leader has no phases");
+			m_Log.Warn($"Leader has no phases");
 			return;
 		}
 
-		var leaderPhases = EntityManager.GetBuffer<CustomPhaseData>(leaderEntity);
+		EntityManager.TryGetBuffer<CustomPhaseData>(leaderEntity, false, out var leaderPhases);
 		if (leaderPhases.Length == 0)
 		{
 			return;
@@ -1444,7 +1518,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 				continue;
 			}
 
-			var memberPhases = EntityManager.GetBuffer<CustomPhaseData>(memberEntity);
+			EntityManager.TryGetBuffer<CustomPhaseData>(memberEntity, false, out var memberPhases);
 			
 			int phaseCount = math.min(leaderPhases.Length, memberPhases.Length);
 			for (int i = 0; i < phaseCount; i++)
@@ -1496,15 +1570,14 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 		int memberCount = members.Length;
 		members.Dispose();
-		m_Log.Info($"TrafficGroupSystem: Propagated pattern {pattern} to {memberCount - 1} group members");
+		m_Log.Info($"Propagated pattern {pattern} to {memberCount - 1} group members");
 	}
 
 	#endregion
 
 	
 
-	#region Phase Rotation
-	#endregion
+	
 
 	#region Flow/Wait Look-ahead
 
@@ -1516,7 +1589,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			return (currentPhase + 1) % 1; // Default to next phase
 		}
 
-		var phases = EntityManager.GetBuffer<CustomPhaseData>(junctionEntity);
+		EntityManager.TryGetBuffer<CustomPhaseData>(junctionEntity, false, out var phases);
 		if (phases.Length == 0)
 		{
 			return 0;
@@ -1665,7 +1738,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			if (group.m_GreenWaveEnabled)
 			{
 				if (EntityManager.HasBuffer<CustomPhaseData>(junctionEntity) && 
-				    EntityManager.GetBuffer<CustomPhaseData>(junctionEntity).Length > 0)
+				    EntityManager.TryGetBuffer<CustomPhaseData>(junctionEntity, false, out var phases) && phases.Length > 0)
 				{
 					CalculateEnhancedGreenWaveTiming(groupEntity);
 				}
@@ -1687,7 +1760,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			return;
 		}
 
-		var phases = EntityManager.GetBuffer<CustomPhaseData>(junctionEntity);
+		EntityManager.TryGetBuffer<CustomPhaseData>(junctionEntity, false, out var phases);
 		
 		for (int i = 0; i < phases.Length; i++)
 		{
@@ -1702,7 +1775,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 		if (EntityManager.HasBuffer<EdgeGroupMask>(junctionEntity))
 		{
-			var edgeMasks = EntityManager.GetBuffer<EdgeGroupMask>(junctionEntity);
+			EntityManager.TryGetBuffer<EdgeGroupMask>(junctionEntity, false, out var edgeMasks);
 			
 			if (edgeMasks.Length != phases.Length && phases.Length > 0)
 			{

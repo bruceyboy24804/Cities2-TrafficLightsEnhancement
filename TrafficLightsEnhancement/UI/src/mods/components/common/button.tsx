@@ -3,6 +3,7 @@ import styled from 'styled-components';
 
 import { LocaleContext } from '../../context';
 import { getString } from '../../localisations';
+import { Tooltip } from 'cs2/ui';
 
 const ButtonComponent = styled.div<{disabled?: boolean}>`
   padding: 3rem;
@@ -15,11 +16,14 @@ const ButtonComponent = styled.div<{disabled?: boolean}>`
   &:hover {
     ${props => props.disabled ? "" : "filter: brightness(1.2) contrast(1.2);"}
   }
+    
 `;
 
-export default function Button(props: {label: string, disabled?: boolean, onClick?: MouseEventHandler<HTMLDivElement>}) {
+export default function Button(props: {label: string, disabled?: boolean, onClick?: MouseEventHandler<HTMLDivElement>, tooltip?: string}) {
   const locale = useContext(LocaleContext);
   return (
-    <ButtonComponent {...props}>{getString(locale, props.label)}</ButtonComponent>
+    <Tooltip tooltip={props.tooltip} direction="right">
+      <ButtonComponent {...props}>{getString(locale, props.label)}</ButtonComponent>
+    </Tooltip>
   );
 }

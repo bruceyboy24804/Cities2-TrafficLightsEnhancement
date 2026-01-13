@@ -28,13 +28,18 @@ public struct GroupMask
     public void Deserialize<TReader>(TReader reader) where TReader : IReader
     {
       reader.Read(out ushort version);
+      reader.Read(out m_GoGroupMask);
+      reader.Read(out m_YieldGroupMask);
       
-      if (version <= TLEDataVersion.V2)
+      if (version >= (ushort)TLEDataVersion.V2)
       {
-        reader.Read(out m_GoGroupMask);
-        reader.Read(out m_YieldGroupMask);
         reader.Read(out m_OpenDelay);
         reader.Read(out m_CloseDelay);
+      }
+      else
+      {
+        m_OpenDelay = 0.0f;
+        m_CloseDelay = 0.0f;
       }
     }
 
@@ -85,14 +90,10 @@ public struct GroupMask
     public void Deserialize<TReader>(TReader reader) where TReader : IReader
     {
       reader.Read(out ushort version);
-      
-      if (version <= TLEDataVersion.V2)
-      {
-        reader.Read(out m_Left);
-        reader.Read(out m_Straight);
-        reader.Read(out m_Right);
-        reader.Read(out m_UTurn);
-      }
+      reader.Read(out m_Left);
+      reader.Read(out m_Straight);
+      reader.Read(out m_Right);
+      reader.Read(out m_UTurn);
     }
 
     public void Write(IJsonWriter writer)

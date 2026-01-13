@@ -48,28 +48,26 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Build BepInEx 6 version
+    - name: Determine if Beta
+      id: check-beta
       run: |
-        dotnet build --configuration Release --property:BepInExVersion=6
-        cp ./TrafficLightsEnhancement/bin/Release/net46/C2VM.TrafficLightsEnhancement.dll ./C2VM.TrafficLightsEnhancement/
-        cp ./TrafficLightsEnhancement/bin/Release/net46/C2VM.CommonLibraries.LaneSystem.dll ./C2VM.CommonLibraries/
-        zip -r ./C2VM.TrafficLightsEnhancement-BepInEx6.zip ./C2VM.TrafficLightsEnhancement/ ./C2VM.CommonLibraries/
-        rm -rf ./C2VM.TrafficLightsEnhancement/*
-        rm -rf ./C2VM.CommonLibraries/*
+        if [[ "${{ github.ref }}" == *"beta"* ]] || [[ "${{ inputs.tag }}" == *"beta"* ]]; then
+          echo "is_beta=true" >> $GITHUB_OUTPUT
+        else
+          echo "is_beta=false" >> $GITHUB_OUTPUT
+        fi
 
-    - name: Build BepInEx 5 version
+    - name: Build
       run: |
-        dotnet build --configuration Release --property:BepInExVersion=5
-        cp ./TrafficLightsEnhancement/bin/Release/net46/C2VM.TrafficLightsEnhancement.dll ./C2VM.TrafficLightsEnhancement/
-        cp ./TrafficLightsEnhancement/bin/Release/net46/C2VM.CommonLibraries.LaneSystem.dll ./C2VM.CommonLibraries/
-        zip -r ./C2VM.TrafficLightsEnhancement-BepInEx5.zip ./C2VM.TrafficLightsEnhancement/ ./C2VM.CommonLibraries/
-        rm -rf ./C2VM.TrafficLightsEnhancement/*
-        rm -rf ./C2VM.CommonLibraries/*
+        dotnet build --configuration Release --property:ShowCanaryBuildWarning=${{ steps.check-beta.outputs.is_beta }}
+        cp ./TrafficLightsEnhancement/bin/Release/net48/C2VM.TrafficLightsEnhancement.dll ./C2VM.TrafficLightsEnhancement/
+        cp ./TrafficLightsEnhancement/bin/Release/net48/C2VM.CommonLibraries.LaneSystem.dll ./C2VM.CommonLibraries/
+        zip -r ./C2VM.TrafficLightsEnhancement.zip ./C2VM.TrafficLightsEnhancement/ ./C2VM.CommonLibraries/
 
     - name: Create release
       id: create-release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        sha256sum C2VM.TrafficLightsEnhancement-*.zip
-        gh release create ${{ inputs.tag }} C2VM.TrafficLightsEnhancement-BepInEx5.zip C2VM.TrafficLightsEnhancement-BepInEx6.zip --draft
+        sha256sum C2VM.TrafficLightsEnhancement.zip
+        gh release create ${{ inputs.tag }} C2VM.TrafficLightsEnhancement.zip --draft

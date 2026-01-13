@@ -36,6 +36,8 @@ public partial class UISystem
     
     private GetterValueBinding<string> m_AddMemberStateBinding;
 
+    private GetterValueBinding<string> m_SelectMemberStateBinding;
+
     private void AddUIBindings()
     {
         m_MainPanelBinding = CreateBinding("GetMainPanel", GetMainPanel, autoUpdate: false);
@@ -102,6 +104,8 @@ public partial class UISystem
         CreateTrigger<string>("CallEnterAddMemberMode", CallEnterAddMemberMode);
         CreateTrigger<string>("CallExitAddMemberMode", CallExitAddMemberMode);
         CreateTrigger<string>("CallFinishAddMemberMode", CallFinishAddMemberMode);
+        CreateTrigger<string>("CallEnterSelectMemberMode", CallEnterSelectMemberMode);
+        CreateTrigger<string>("CallExitSelectMemberMode", CallExitSelectMemberMode);
         CreateTrigger<string>("CallGetGroupMembers", CallGetGroupMembers);
         CreateTrigger<string>("CallForceSyncToLeader", CallForceSyncToLeader);
         CreateTrigger<string>("CallRecalculateCycleLength", CallRecalculateCycleLength);
@@ -119,6 +123,7 @@ public partial class UISystem
         AddBinding(new TriggerBinding<Entity>(Mod.modName, "GoTo", NavigateTo));
 
         m_AddMemberStateBinding = CreateBinding("GetAddMemberState", GetAddMemberState, autoUpdate: false);
+        m_SelectMemberStateBinding = CreateBinding("GetSelectMemberState", GetSelectMemberState, autoUpdate: false);
     }
 
     protected string GetMainPanel()
@@ -457,11 +462,6 @@ public partial class UISystem
                 menu.items.Add(new UITypes.ItemButton{label = "TrafficGroups", key = "state", value = $"{(int)MainPanelState.TrafficGroups}", engineEventName = "C2VM.TrafficLightsEnhancement.TRIGGER:CallSetMainPanelState"});
             }
         }
-        if (Mod.IsBeta() && Mod.m_Settings != null && Mod.m_Settings.m_SuppressCanaryWarningVersion != Mod.m_InformationalVersion)
-        {
-            menu.items.Add(default(UITypes.ItemDivider));
-            menu.items.Add(new UITypes.ItemNotification{label = "BetaBuildWarning", notificationType = "warning"});
-        }
         string result = JsonConvert.SerializeObject(menu);
         return result;
     }
@@ -516,9 +516,10 @@ public partial class UISystem
         }
         if (m_CustomTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase)
         {
-            if (!EntityManager.HasBuffer<CustomPhaseData>(m_SelectedEntity))
+            DynamicBuffer<CustomPhaseData> customPhaseDataBuffer;
+            if (!EntityManager.TryGetBuffer(m_SelectedEntity, false, out customPhaseDataBuffer))
             {
-                EntityManager.AddComponent<CustomPhaseData>(m_SelectedEntity);
+                customPhaseDataBuffer = EntityManager.AddBuffer<CustomPhaseData>(m_SelectedEntity);
             }
             if (!EntityManager.HasBuffer<EdgeGroupMask>(m_SelectedEntity))
             {
@@ -528,7 +529,13 @@ public partial class UISystem
             {
                 EntityManager.AddComponent<SubLaneGroupMask>(m_SelectedEntity);
             }
+            if (customPhaseDataBuffer.Length == 0)
+            {
+                customPhaseDataBuffer.Add(new CustomPhaseData());
+            }
             m_CustomTrafficLights.SetPattern(CustomTrafficLights.Patterns.CustomPhase);
+            UpdateEdgeInfo(m_SelectedEntity);
+            UpdateActiveEditingCustomPhaseIndex(0);
         }
         if (m_CustomTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed)
         {
@@ -1601,8 +1608,51 @@ public partial class UISystem
 
     protected void CallFinishAddMemberMode(string input)
     {
+        var targetGroup = m_TargetGroupForMember;
         m_IsAddingMember = false;
         m_TargetGroupForMember = Entity.Null;
+        
+        // Select the first (leader) member of the group so user can work with it immediately
+        if (targetGroup != Entity.Null)
+        {
+            var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
+            var members = trafficGroupSystem.GetGroupMembers(targetGroup);
+            Entity firstMember = Entity.Null;
+            
+            foreach (var memberEntity in members)
+            {
+                if (EntityManager.HasComponent<TrafficGroupMember>(memberEntity))
+                {
+                    var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
+                    if (memberData.m_IsGroupLeader)
+                    {
+                        firstMember = memberEntity;
+                        break;
+                    }
+                    if (firstMember == Entity.Null)
+                    {
+                        firstMember = memberEntity;
+                    }
+                }
+            }
+            members.Dispose();
+            
+            if (firstMember != Entity.Null)
+            {
+                m_SelectedEntity = firstMember;
+                UpdateEdgeInfo(firstMember);
+                
+                if (EntityManager.HasComponent<CustomTrafficLights>(firstMember))
+                {
+                    m_CustomTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(firstMember);
+                }
+                else
+                {
+                    m_CustomTrafficLights = new CustomTrafficLights(CustomTrafficLights.Patterns.Vanilla);
+                }
+            }
+        }
+        
         SetMainPanelState(MainPanelState.TrafficGroups);
         m_AddMemberStateBinding?.Update();
     }
@@ -1642,6 +1692,74 @@ public partial class UISystem
             isAddingMember = m_IsAddingMember,
             targetGroupIndex = m_TargetGroupForMember.Index,
             targetGroupVersion = m_TargetGroupForMember.Version,
+            targetGroupName = groupName,
+            memberCount = memberCount,
+            members = membersList
+        };
+        
+        return JsonConvert.SerializeObject(result);
+    }
+
+    protected void CallEnterSelectMemberMode(string input)
+    {
+        var groupData = new { groupIndex = 0, groupVersion = 0 };
+        var parsedData = JsonConvert.DeserializeAnonymousType(input, groupData);
+        
+        if (parsedData != null)
+        {
+            Entity targetGroup = new Entity
+            {
+                Index = parsedData.groupIndex,
+                Version = parsedData.groupVersion
+            };
+            
+            if (EntityManager.Exists(targetGroup))
+            {
+                EnterSelectMemberMode(targetGroup);
+            }
+        }
+    }
+
+    protected void CallExitSelectMemberMode(string input)
+    {
+        ExitSelectMemberMode();
+    }
+
+    protected string GetSelectMemberState()
+    {
+        string groupName = "";
+        int memberCount = 0;
+        var membersList = new ArrayList();
+        
+        if (m_IsSelectingGroupMember && !m_TargetGroupForSelection.Equals(Entity.Null))
+        {
+            var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
+            groupName = trafficGroupSystem.GetGroupName(m_TargetGroupForSelection);
+            memberCount = trafficGroupSystem.GetGroupMemberCount(m_TargetGroupForSelection);
+            
+            var members = trafficGroupSystem.GetGroupMembers(m_TargetGroupForSelection);
+            foreach (var memberEntity in members)
+            {
+                bool isLeader = false;
+                if (EntityManager.HasComponent<TrafficGroupMember>(memberEntity))
+                {
+                    var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
+                    isLeader = memberData.m_IsGroupLeader;
+                }
+                membersList.Add(new {
+                    index = memberEntity.Index,
+                    version = memberEntity.Version,
+                    isLeader = isLeader
+                });
+            }
+            members.Dispose();
+        }
+        
+        var result = new
+        {
+            isSelectingMember = m_IsSelectingGroupMember,
+            targetGroupIndex = m_TargetGroupForSelection.Index,
+            targetGroupVersion = m_TargetGroupForSelection.Version,
             targetGroupName = groupName,
             memberCount = memberCount,
             members = membersList

@@ -24,13 +24,9 @@ namespace C2VM.TrafficLightsEnhancement.Components
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out ushort version);
-            
-            if (version <= TLEDataVersion.V2)
-            {
-                reader.Read(out m_Duration);
-                reader.Read(out m_Distance);
-                reader.Read(out m_Frame);
-            }
+            reader.Read(out m_Duration);
+            reader.Read(out m_Distance);
+            reader.Read(out m_Frame);
         }
 
         public LaneFlowHistory()

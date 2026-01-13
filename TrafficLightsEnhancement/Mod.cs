@@ -1,7 +1,9 @@
 ﻿using System.Reflection;
+using C2VM.TrafficLightsEnhancement.Systems.Serialization;
 using Colossal.Logging;
 using Game;
 using Game.Modding;
+using Game.Rendering;
 using Game.SceneFlow;
 using Unity.Collections;
 using Unity.Entities;
@@ -12,7 +14,8 @@ public class Mod : IMod
 {
     public static readonly string m_Id = typeof(Mod).Assembly.GetName().Name;
 
-    public static readonly string m_InformationalVersion = ((AssemblyInformationalVersionAttribute)System.Attribute.GetCustomAttribute(Assembly.GetAssembly(typeof(Mod)), typeof(AssemblyInformationalVersionAttribute))).InformationalVersion;
+    public static string Version => Assembly.GetExecutingAssembly().GetName().Version.ToString(4);
+    public static string InformationalVersion => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
 
     public static readonly ILog m_Log = LogManager.GetLogger($"{m_Id}.{nameof(Mod)}").SetShowsErrorsInUI(false);
 
@@ -32,7 +35,7 @@ public class Mod : IMod
 
     public void OnLoad(UpdateSystem updateSystem)
     {
-        m_Log.Info($"Loading {m_Id} v{m_InformationalVersion}");
+        m_Log.Info($"Loading {m_Id} v{InformationalVersion}");
 
         /*var outdatedType = System.Type.GetType("C2VM.TrafficLightsEnhancement.Plugin, C2VM.TrafficLightsEnhancement") ?? System.Type.GetType("C2VM.CommonLibraries.LaneSystem.Plugin, C2VM.CommonLibraries.LaneSystem");
         if (outdatedType != null)
@@ -75,13 +78,16 @@ public class Mod : IMod
         Utils.EntityQueryUtils.UpdateEntityQuery(m_TrafficLightInitializationSystem, "m_TrafficLightsQuery", noneList);
         Utils.EntityQueryUtils.UpdateEntityQuery(m_TrafficLightSystem, "m_TrafficLightQuery", noneList);
 
-        updateSystem.UpdateBefore<C2VM.TrafficLightsEnhancement.Systems.TrafficLightSystems.Initialisation.PatchedTrafficLightInitializationSystem, Game.Net.TrafficLightInitializationSystem>(SystemUpdatePhase.Modification4B);
-        updateSystem.UpdateBefore<C2VM.TrafficLightsEnhancement.Systems.TrafficLightSystems.Simulation.PatchedTrafficLightSystem, Game.Simulation.TrafficLightSystem>(SystemUpdatePhase.GameSimulation);
-        updateSystem.UpdateAt<C2VM.TrafficLightsEnhancement.Systems.UI.TooltipSystem>(SystemUpdatePhase.UITooltip);
-        updateSystem.UpdateAt<C2VM.TrafficLightsEnhancement.Systems.UI.UISystem>(SystemUpdatePhase.UIUpdate);
-        updateSystem.UpdateAt<C2VM.TrafficLightsEnhancement.Systems.Tool.ToolSystem>(SystemUpdatePhase.ToolUpdate);
-        updateSystem.UpdateAt<C2VM.TrafficLightsEnhancement.Systems.Update.ModificationUpdateSystem>(SystemUpdatePhase.ModificationEnd);
-        updateSystem.UpdateAfter<C2VM.TrafficLightsEnhancement.Systems.Update.SimulationUpdateSystem>(SystemUpdatePhase.GameSimulation);
+        updateSystem.UpdateBefore<TLEDataMigrationSystem, Systems.TrafficLightSystems.Initialisation.PatchedTrafficLightInitializationSystem>(SystemUpdatePhase.Modification4B);
+        updateSystem.UpdateBefore<Systems.TrafficLightSystems.Initialisation.PatchedTrafficLightInitializationSystem, Game.Net.TrafficLightInitializationSystem>(SystemUpdatePhase.Modification4B);
+        updateSystem.UpdateBefore<Systems.TrafficLightSystems.Simulation.PatchedTrafficLightSystem, Game.Simulation.TrafficLightSystem>(SystemUpdatePhase.GameSimulation);
+        updateSystem.UpdateAt<Systems.TrafficGroupSystem>(SystemUpdatePhase.ModificationEnd);
+        updateSystem.UpdateAt<Systems.UI.TooltipSystem>(SystemUpdatePhase.UITooltip);
+        updateSystem.UpdateAt<Systems.UI.UISystem>(SystemUpdatePhase.UIUpdate);
+        updateSystem.UpdateAt<Systems.Tool.ToolSystem>(SystemUpdatePhase.ToolUpdate);
+        updateSystem.UpdateAt<Systems.Update.ModificationUpdateSystem>(SystemUpdatePhase.ModificationEnd);
+        updateSystem.UpdateAfter<Systems.Update.SimulationUpdateSystem>(SystemUpdatePhase.GameSimulation);
+        updateSystem.UpdateAfter<Systems.Overlay.TrafficLightsOverlaySystem, AreaRenderSystem>(SystemUpdatePhase.Rendering);
 
         SetCompatibilityMode(m_Settings != null && m_Settings.m_CompatibilityMode);
     }

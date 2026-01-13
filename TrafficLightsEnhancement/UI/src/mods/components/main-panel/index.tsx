@@ -1,17 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import styled from 'styled-components';
-
-import engine from 'cohtml/cohtml';
-import { bindValue, useValue } from 'cs2/api';
-
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import styles from "./mainPanel.module.scss"
+import { useValue } from 'cs2/api';
 import { MainPanelState } from '../../constants';
-
 import Header from './header';
 import Content from './content';
-
 import CustomPhaseMainPanel from '../../components/custom-phase-tool/main-panel';
+import TrafficGroupsMainPanel from '../traffic-groups/main-panel/IndexComponent';
 import{Button, Tooltip} from "cs2/ui"
-
+import { mainPanel, callMainPanelSave, callMainPanelUpdatePosition, callSetMainPanelState, addMemberState } from '../../../bindings';
 const traffLightSrc = "Media/Game/Icons/TrafficLights.svg"
 const defaultPanel = {
   title: "",
@@ -20,6 +16,7 @@ const defaultPanel = {
   showPanel: false,
   showFloatingButton: false,
   state: 0,
+  selectedEntity: { index: 0, version: 0 },
   items: []
 };
 interface MainPanelType {
@@ -29,12 +26,14 @@ interface MainPanelType {
   showPanel: boolean;
   showFloatingButton: boolean;
   state: number;
+  selectedEntity: { index: number; version: number };
   items: any[];
 }
+
 const useMainPanel = () => {
   const [panel, setPanel] = useState<MainPanelType>(defaultPanel);
 
-  const result = useValue(bindValue("C2VM.TLE", "GetMainPanel", "{}"));
+  const result = useValue(mainPanel.binding);
 
   useEffect(() => {
     const newPanel = JSON.parse(result);
@@ -45,6 +44,7 @@ const useMainPanel = () => {
       showPanel: newPanel.showPanel ?? defaultPanel.showPanel,
       showFloatingButton: newPanel.showFloatingButton ?? defaultPanel.showFloatingButton,
       state: newPanel.state ?? defaultPanel.state,
+      selectedEntity: newPanel.selectedEntity ?? defaultPanel.selectedEntity,
       items: newPanel.items ?? defaultPanel.items
     });
   }, [result]);
@@ -52,15 +52,7 @@ const useMainPanel = () => {
   return panel;
 };
 
-const Container = styled.div`
-  position: absolute;
-  top: calc(10rem + var(--floatingToggleSize));
-  left: 0rem;
-  border-radius: 4rem;
-  overflow: hidden;
-  margin: -10rem 0 0 -10rem;
-  padding: 10rem 10rem 6rem 10rem;
-`;
+
 
 export default function MainPanel() {
   const [showFloatingButton, setShowFloatingButton] = useState(false);
@@ -75,6 +67,14 @@ export default function MainPanel() {
   const [toolSideColumn, setToolSideColumn] = useState<Element | null>(null);
 
   const panel = useMainPanel();
+  const addMemberStateRaw = useValue(addMemberState.binding);
+  const addMemberData = useMemo(() => {
+    try {
+      return JSON.parse(addMemberStateRaw);
+    } catch {
+      return { isAddingMember: false, members: [] };
+    }
+  }, [addMemberStateRaw]);
 
   const containerRef = useCallback((el: Element | null) => setContainer(el), []);
 
@@ -90,7 +90,7 @@ export default function MainPanel() {
   // Save everything when the panel is closed
   useEffect(() => {
     return () => {
-      engine.call("C2VM.TLE.CallMainPanelSave", "{}");
+      callMainPanelSave("{}");
     };
   }, []);
 
@@ -106,9 +106,9 @@ export default function MainPanel() {
 
   const floatingButtonClickHandler = useCallback(() => {
     if (panel.showPanel) {
-      engine.call("C2VM.TLE.CallSetMainPanelState", JSON.stringify({value: `${MainPanelState.Hidden}`}));
+      callSetMainPanelState(JSON.stringify({value: `${MainPanelState.Hidden}`}));
     } else {
-      engine.call("C2VM.TLE.CallSetMainPanelState", JSON.stringify({value: `${MainPanelState.Empty}`}));
+      callSetMainPanelState(JSON.stringify({value: `${MainPanelState.Empty}`}));
     }
   }, [panel.showPanel]);
 
@@ -123,7 +123,7 @@ export default function MainPanel() {
   const mouseUpHandler = useCallback((_event: MouseEvent) => {
     if (container) {
       const rect = container.getBoundingClientRect();
-      engine.call("C2VM.TLE.CallMainPanelUpdatePosition", JSON.stringify({top: Math.floor(rect.top), left: Math.floor(rect.left)}));
+      callMainPanelUpdatePosition(JSON.stringify({top: Math.floor(rect.top), left: Math.floor(rect.left)}));
     }
     setDragging(false);
   }, [container]);
@@ -175,14 +175,15 @@ export default function MainPanel() {
     
     
       
-      <Container
+      <div className={styles.indexContainer}
         ref={containerRef}
         style={style}
       >
         <Header title={panel.title} image={panel.image} onMouseDown={mouseDownHandler} />
-        {panel.state != MainPanelState.CustomPhase && <Content items={panel.items} />}
-        {panel.state == MainPanelState.CustomPhase && <CustomPhaseMainPanel items={panel.items} />}
-      </Container>
+        {panel.state != MainPanelState.CustomPhase && panel.state != MainPanelState.TrafficGroups && <Content items={panel.items} addMemberData={addMemberData} />}
+        {panel.state == MainPanelState.CustomPhase && <CustomPhaseMainPanel items={panel.items} selectedEntity={panel.selectedEntity} />}
+        {panel.state == MainPanelState.TrafficGroups && <TrafficGroupsMainPanel items={panel.items} />}
+      </div>
     </>
   );
 }

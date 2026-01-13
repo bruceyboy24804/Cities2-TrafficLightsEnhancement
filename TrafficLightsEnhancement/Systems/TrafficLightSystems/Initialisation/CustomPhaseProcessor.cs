@@ -1,3 +1,4 @@
+
 using C2VM.TrafficLightsEnhancement.Components;
 using C2VM.TrafficLightsEnhancement.Utils;
 using Game.Net;
@@ -115,11 +116,7 @@ public struct CustomPhaseProcessor
                 }
                 if ((pedestrianLane.m_Flags & PedestrianLaneFlags.Crosswalk) != 0)
                 {
-                    if (NodeUtils.IsCrossingStopLine(ref job, subLane, sourceEdge))
-                    {
-                        laneSignal.m_GroupMask = groupMask.m_Pedestrian.m_GoGroupMask;
-                    }
-                    
+                    laneSignal.m_GroupMask = groupMask.m_Pedestrian.m_GoGroupMask;
                 }
             }
 

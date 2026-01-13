@@ -17,7 +17,8 @@ public struct CustomTrafficLights : IComponentData, IQueryTypeParameter, ISerial
 
   public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
   {
-    writer.Write(TLEDataVersion.V2);
+    writer.Write(uint.MaxValue);
+    writer.Write(TLEDataVersion.Current);
     writer.Write((uint)m_Pattern);
     writer.Write(m_PedestrianPhaseDurationMultiplier);
     writer.Write(m_PedestrianPhaseGroupMask);
@@ -27,9 +28,27 @@ public struct CustomTrafficLights : IComponentData, IQueryTypeParameter, ISerial
 
   public void Deserialize<TReader>(TReader reader) where TReader : IReader
   {
-    reader.Read(out int version);
+    // Initialize to defaults
+    m_PedestrianPhaseDurationMultiplier = 1f;
+    m_PedestrianPhaseGroupMask = 0;
+    m_Timer = 0U;
+    m_ManualSignalGroup = 0;
     
-    if (version <= TLEDataVersion.V2)
+    reader.Read(out uint marker);
+    int version;
+    if (marker == uint.MaxValue)
+      reader.Read(out version);
+    else
+      version = 1;
+    
+    if (version < TLEDataVersion.V2)
+    {
+      // Old format: 16 uints (old pattern array)
+      for (int i = 1; i < 16; i++)
+        reader.Read(out uint _);
+      m_Pattern = Patterns.Vanilla;
+    }
+    else
     {
       reader.Read(out uint pattern);
       m_Pattern = (Patterns)pattern;
@@ -39,7 +58,6 @@ public struct CustomTrafficLights : IComponentData, IQueryTypeParameter, ISerial
       m_PedestrianPhaseGroupMask = pedestrianPhaseGroupMask;
       reader.Read(out m_Timer);
       reader.Read(out m_ManualSignalGroup);
-      m_ManualSignalGroup = 0;
     }
   }
 

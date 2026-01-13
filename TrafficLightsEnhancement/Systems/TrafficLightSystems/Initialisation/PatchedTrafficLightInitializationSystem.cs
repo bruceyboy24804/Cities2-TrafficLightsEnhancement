@@ -153,6 +153,8 @@ public partial class PatchedTrafficLightInitializationSystem : Game.GameSystemBa
 
         [NativeDisableParallelForRestriction]
         public ComponentLookup<LaneSignal> m_LaneSignalData;
+        
+        
 
         public bool m_LeftHandTraffic;
 
@@ -235,7 +237,7 @@ public partial class PatchedTrafficLightInitializationSystem : Game.GameSystemBa
                 }
 
                 PredefinedPatternsProcessor.ResetExtraLaneSignal(ref this, subLanes, ref trafficLights);
-                if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase && i < edgeGroupMaskAccessor.Length && i < subLaneGroupMaskAccessor.Length && i < customPhaseDataAccessor.Length)
+                if ((customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase || customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed) && i < edgeGroupMaskAccessor.Length && i < subLaneGroupMaskAccessor.Length && i < customPhaseDataAccessor.Length)
                 {
                     CustomPhaseUtils.ValidateBuffer(ref this, entityArray[i], subLanes, connectedEdgeAccessor[i], edgeGroupMaskAccessor[i], subLaneGroupMaskAccessor[i], m_ExtraTypeHandle.m_SubLane);
                     CustomPhaseProcessor.ProcessLanes(ref this, unfilteredChunkIndex, entityArray[i], connectedEdgeAccessor[i], subLanes, out groupCount, ref trafficLights, ref customTrafficLights, edgeGroupMaskAccessor[i], subLaneGroupMaskAccessor[i], customPhaseDataAccessor[i]);
@@ -256,6 +258,10 @@ public partial class PatchedTrafficLightInitializationSystem : Game.GameSystemBa
                     else if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.ProtectedCentreTurn)
                     {
                         PredefinedPatternsProcessor.SetupProtectedCentreTurn(ref this, connectedEdgeAccessor[i], subLanes, out groupCount, ref trafficLights);
+                    }
+                    else if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.SplitPhasingProtectedLeft)
+                    {
+                        PredefinedPatternsProcessor.SetupSplitPhasingProtectedLeft(ref this, connectedEdgeAccessor[i], subLanes, out groupCount, ref trafficLights);
                     }
                     else
                     {

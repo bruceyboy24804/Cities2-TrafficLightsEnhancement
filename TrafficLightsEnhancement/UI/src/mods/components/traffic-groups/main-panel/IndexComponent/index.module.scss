@@ -185,6 +185,36 @@
     display: inline;
 }
 
+.memberSelectorRow {
+    display: flex;
+    align-items: center;
+    gap: 8rem;
+    width: 100%;
+    padding: 4rem 0;
+}
+
+.memberDropdownMenu {
+    display: flex;
+    flex-direction: column;
+    min-width: 150rem;
+}
+
+.memberDropdownItem {
+    padding: 8rem 12rem;
+    cursor: pointer;
+    color: var(--textColor);
+    font-size: var(--fontSizeS);
+    
+    &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    &.selected {
+        background-color: var(--accentColorDark);
+        color: var(--textColor);
+    }
+}
+
 .memberList {
     display: flex;
     flex-direction: column;

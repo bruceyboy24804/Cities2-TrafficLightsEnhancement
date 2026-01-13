@@ -7,4 +7,5 @@ export const enum MainPanelState {
   Empty = 1,
   Main = 2,
   CustomPhase = 3,
+  TrafficGroups = 4,
 }

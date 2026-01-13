@@ -2,13 +2,13 @@
     <PropertyGroup>
         <OutputType>Library</OutputType>
         <TargetFramework>net48</TargetFramework>
-        <Configurations>Debug;Release</Configurations>
+        <Configurations>Debug;Release;Beta</Configurations>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
         <AssemblyName>C2VM.TrafficLightsEnhancement</AssemblyName>
         <RootNamespace>C2VM.TrafficLightsEnhancement</RootNamespace>
-        <Version>0.3.0</Version>
-
+        <Version>0.3.3.0</Version>
+        <InformationalVersion>0.3.3.0</InformationalVersion>
         <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
         <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
     </PropertyGroup>
@@ -126,6 +126,10 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(ShowCanaryBuildWarning)' == 'true'">
+        <DefineConstants>$(DefineConstants);SHOW_CANARY_BUILD_WARNING</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Beta'">
         <DefineConstants>$(DefineConstants);SHOW_CANARY_BUILD_WARNING</DefineConstants>
     </PropertyGroup>
 </Project>

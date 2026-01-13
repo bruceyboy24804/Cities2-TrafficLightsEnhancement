@@ -39,6 +39,12 @@ public partial class UISystem: ExtendedUISystemBase
     private Entity m_TargetGroupForMember = Entity.Null;
     private MainPanelState m_PreviousMainPanelState = MainPanelState.Hidden;
 
+    private bool m_IsSelectingGroupMember = false;
+    private Entity m_TargetGroupForSelection = Entity.Null;
+
+    public bool IsSelectingGroupMember => m_IsSelectingGroupMember;
+    public Entity TargetGroupForSelection => m_TargetGroupForSelection;
+
     private CustomTrafficLights m_CustomTrafficLights;
 
     private Game.City.CityConfigurationSystem m_CityConfigurationSystem;
@@ -219,7 +225,14 @@ public partial class UISystem: ExtendedUISystemBase
                 {
                     if (memberEntity != node && !m_EdgeInfoDictionary.ContainsKey(memberEntity))
                     {
-                        m_EdgeInfoDictionary[memberEntity] = NodeUtils.GetEdgeInfoList(Allocator.Persistent, memberEntity, this).AsArray();
+                        // Only include edge info for followers that have at least 1 phase configured
+                        bool hasPhases = EntityManager.HasBuffer<CustomPhaseData>(memberEntity) && 
+                            EntityManager.GetBuffer<CustomPhaseData>(memberEntity).Length > 0;
+                        
+                        if (hasPhases)
+                        {
+                            m_EdgeInfoDictionary[memberEntity] = NodeUtils.GetEdgeInfoList(Allocator.Persistent, memberEntity, this).AsArray();
+                        }
                     }
                 }
                 
@@ -262,7 +275,7 @@ public partial class UISystem: ExtendedUISystemBase
                     var customTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(m_SelectedEntity);
                     m_CustomTrafficLights.m_Timer = customTrafficLights.m_Timer;
                 }
-                EntityManager.SetComponentData(m_SelectedEntity, m_CustomTrafficLights);
+                EntityManager.SetComponentData<CustomTrafficLights>(m_SelectedEntity, m_CustomTrafficLights);
             }
 
             if (!EntityManager.HasComponent<Game.Net.TrafficLights>(m_SelectedEntity))
@@ -281,30 +294,73 @@ public partial class UISystem: ExtendedUISystemBase
         }
     }
 
+    public bool IsEntityInTargetGroup(Entity entity)
+    {
+        if (entity == Entity.Null || m_TargetGroupForSelection == Entity.Null)
+        {
+            return false;
+        }
+        if (!EntityManager.HasComponent<TrafficGroupMember>(entity))
+        {
+            return false;
+        }
+        var member = EntityManager.GetComponentData<TrafficGroupMember>(entity);
+        return member.m_GroupEntity == m_TargetGroupForSelection;
+    }
+
+    public void EnterSelectMemberMode(Entity targetGroup)
+    {
+        m_IsSelectingGroupMember = true;
+        m_TargetGroupForSelection = targetGroup;
+        SetMainPanelState(MainPanelState.Empty);
+        m_SelectMemberStateBinding?.Update();
+    }
+
+    public void ExitSelectMemberMode()
+    {
+        m_IsSelectingGroupMember = false;
+        m_TargetGroupForSelection = Entity.Null;
+        SetMainPanelState(MainPanelState.TrafficGroups);
+        m_SelectMemberStateBinding?.Update();
+    }
+
     public void ChangeSelectedEntity(Entity entity)
     {
         UpdateManualSignalGroup(0);
+
+        if (m_IsSelectingGroupMember && !entity.Equals(Entity.Null))
+        {
+            if (IsEntityInTargetGroup(entity))
+            {
+                m_IsSelectingGroupMember = false;
+                m_TargetGroupForSelection = Entity.Null;
+                m_SelectMemberStateBinding?.Update();
+                
+                m_ShowNotificationUnsaved = false;
+                ClearEdgeInfo();
+                UpdateEdgeInfo(entity);
+                m_SelectedEntity = entity;
+                
+                if (EntityManager.HasComponent<CustomTrafficLights>(entity))
+                {
+                    m_CustomTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(entity);
+                }
+                else
+                {
+                    m_CustomTrafficLights = new CustomTrafficLights(CustomTrafficLights.Patterns.Vanilla);
+                }
+                
+                SetMainPanelState(MainPanelState.TrafficGroups);
+            }
+            return;
+        }
 
         if (m_IsAddingMember && !entity.Equals(Entity.Null))
         {
             var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
             trafficGroupSystem.AddJunctionToGroup(m_TargetGroupForMember, entity);
 
-            var targetGroupEntity = m_TargetGroupForMember;
-
-            m_SelectedEntity = entity;
-            UpdateEdgeInfo(entity);
-
-            m_IsAddingMember = false;
-            m_TargetGroupForMember = Entity.Null;
-
             m_AddMemberStateBinding?.Update();
-
-            if (targetGroupEntity != Entity.Null)
-            {
-                SetMainPanelState(MainPanelState.TrafficGroups);
-            }
-
             m_MainPanelBinding.Update();
             return;
         }

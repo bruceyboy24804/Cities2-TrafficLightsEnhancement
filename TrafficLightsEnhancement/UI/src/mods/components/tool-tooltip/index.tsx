@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import styled from "styled-components";
 
 import { bindValue, useValue } from "cs2/api";
+import mod from "mod.json";
 
 import { LocaleContext } from "../../context";
 import { getString } from "../../localisations";
@@ -40,7 +41,7 @@ export default function ToolTooltip() {
   const [top, setTop] = useState(0);
   const [left, setLeft] = useState(0);
 
-  const tooltipMessage: ToolTooltipMessage[] = useValue(bindValue("C2VM.TLE", "GetToolTooltipMessage", []));
+  const tooltipMessage: ToolTooltipMessage[] = useValue(bindValue(mod.id, "GetToolTooltipMessage", []));
 
   useEffect(() => {
     const mouseMoveHandler = (e: MouseEvent) => {

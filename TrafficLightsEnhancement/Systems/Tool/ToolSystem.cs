@@ -44,8 +44,14 @@ public partial class ToolSystem : NetToolSystem
 
     private StringTooltip m_RemoveTrafficLightsTooltip;
 
+    private StringTooltip m_SelectGroupMemberTooltip;
+
     // Add a scale factor for the overlay circle (1.0 = original size, 0.7 = 70% of original)
     private const float CircleScale = 0.7f;
+
+    // Circle colors for different modes
+    private static readonly Color DefaultCircleColor = new Color(0.5f, 1.0f, 2.0f, 1.0f);
+    private static readonly Color SelectMemberCircleColor = new Color(1.0f, 0.6f, 0.0f, 1.0f);
 
     protected override void OnCreate()
     {
@@ -75,6 +81,12 @@ public partial class ToolSystem : NetToolSystem
             path = "C2VM.TLE.Tooltips.RemoveTrafficLights",
             icon = "Media/Mouse/RMB.svg",
             value = LocalizedString.Id("C2VM.TLE.Tooltips.RemoveTrafficLights"),
+        };
+        m_SelectGroupMemberTooltip = new StringTooltip
+        {
+            path = "C2VM.TLE.Tooltips.SelectGroupMember",
+            icon = "Media/Mouse/LMB.svg",
+            value = LocalizedString.Id("C2VM.TLE.Tooltips.SelectGroupMember"),
         };
     }
 
@@ -110,9 +122,14 @@ public partial class ToolSystem : NetToolSystem
                     m_RaycastResult = originalEntity;
                     UpdateTooltip(m_RaycastResult);
                 }
-                
+
                 // Draw circle every frame while hovering (OverlayRenderSystem clears each frame)
-                if (IsValidEntity(m_RaycastResult) && EntityManager.TryGetComponent<NodeGeometry>(m_RaycastResult, out var nodeGeometry))
+                bool isSelectMemberMode = m_UISystem.IsSelectingGroupMember;
+                bool isValidForMode = isSelectMemberMode
+                    ? m_UISystem.IsEntityInTargetGroup(m_RaycastResult)
+                    : IsValidEntity(m_RaycastResult);
+
+                if (isValidForMode && EntityManager.TryGetComponent<NodeGeometry>(m_RaycastResult, out var nodeGeometry))
                 {
                     var overlayRenderSystem = World.GetOrCreateSystemManaged<OverlayRenderSystem>();
                     var overlayBuffer = overlayRenderSystem.GetBuffer(out JobHandle dependencies);
@@ -123,7 +140,9 @@ public partial class ToolSystem : NetToolSystem
                     // Apply scaling and ensure a positive non-zero diameter
                     diameter = math.max(0.01f, diameter * CircleScale);
 
-                    overlayBuffer.DrawCircle(new Color(0.5f, 1.0f, 2.0f, 1.0f), center, diameter);
+                    // Use different color for select member mode
+                    Color circleColor = isSelectMemberMode ? SelectMemberCircleColor : DefaultCircleColor;
+                    overlayBuffer.DrawCircle(circleColor, center, diameter);
                 }
             }
             else if (m_RaycastResult != Entity.Null)
@@ -135,7 +154,22 @@ public partial class ToolSystem : NetToolSystem
             {
                 Entity entity = m_ParentAppliedUpgrade.Value.m_Entity;
                 CompositionFlags flags = m_ParentAppliedUpgrade.Value.m_Flags;
-                if (entity != Entity.Null && (flags.m_General & CompositionFlags.General.TrafficLights) != 0 && IsValidEntity(entity))
+                bool isSelectMemberMode = m_UISystem.IsSelectingGroupMember;
+
+                if (isSelectMemberMode)
+                {
+                    // In select member mode, only allow selecting existing group members
+                    if (entity != Entity.Null && m_UISystem.IsEntityInTargetGroup(entity))
+                    {
+                        m_UISystem.ChangeSelectedEntity(entity);
+                    }
+                    else
+                    {
+                        // Exit select member mode and return to normal if clicked on non-member
+                        m_UISystem.ExitSelectMemberMode();
+                    }
+                }
+                else if (entity != Entity.Null && (flags.m_General & CompositionFlags.General.TrafficLights) != 0 && IsValidEntity(entity))
                 {
                     m_UISystem.ChangeSelectedEntity(entity);
                 }
@@ -189,6 +223,17 @@ public partial class ToolSystem : NetToolSystem
     private void UpdateTooltip(Entity entity)
     {
         m_TooltipSystem.m_TooltipList.Clear();
+
+        // In select member mode, show different tooltip
+        if (m_UISystem.IsSelectingGroupMember)
+        {
+            if (m_UISystem.IsEntityInTargetGroup(entity))
+            {
+                m_TooltipSystem.m_TooltipList.Add(m_SelectGroupMemberTooltip);
+            }
+            return;
+        }
+
         if (IsValidEntity(entity))
         {
             m_TooltipSystem.m_TooltipList.Add(m_ConfigureTooltip);

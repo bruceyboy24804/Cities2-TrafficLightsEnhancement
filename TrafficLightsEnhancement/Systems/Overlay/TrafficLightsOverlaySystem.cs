@@ -56,7 +56,7 @@ public partial class TrafficLightsOverlaySystem : GameSystemBase
 		int displayIndex = GetDisplayIndex(selectedEntity);
 
 		OverlayRenderSystem.Buffer overlayBuffer = m_OverlayRenderSystem.GetBuffer(out JobHandle dependencies);
-		dependencies.Complete();
+		Dependency = dependencies;
 
 		DrawGizmoForEntity(ref overlayBuffer, selectedEntity, displayIndex);
 		

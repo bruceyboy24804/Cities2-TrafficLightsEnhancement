@@ -13,7 +13,7 @@ public struct SignalDelayData : IBufferElementData, ISerializable
     
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
-        writer.Write(TLEDataVersion.V2);
+        writer.Write(TLEDataVersion.Current);
         writer.Write(m_Edge);
         writer.Write(m_OpenDelay);
         writer.Write(m_CloseDelay);
@@ -24,7 +24,16 @@ public struct SignalDelayData : IBufferElementData, ISerializable
     {
         reader.Read(out int version);
         
-        if (version <= TLEDataVersion.V2)
+        if (version < TLEDataVersion.V2)
+        {
+            // Old format: first int was Entity.Index, next int is Entity.Version
+            reader.Read(out int entityVersion);
+            m_Edge = new Entity { Index = version, Version = entityVersion };
+            reader.Read(out m_OpenDelay);
+            reader.Read(out m_CloseDelay);
+            reader.Read(out m_IsEnabled);
+        }
+        else
         {
             reader.Read(out m_Edge);
             reader.Read(out m_OpenDelay);

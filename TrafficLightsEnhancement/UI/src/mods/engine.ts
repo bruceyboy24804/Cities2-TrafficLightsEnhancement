@@ -1,39 +1,20 @@
-import { useEffect, useState } from 'react';
+import { call, trigger, bindValue, useValue } from 'cs2/api';
 import { WorldPosition } from './general';
-interface Engine {
-	call: (event: string, data?: string) => Promise<string>;
-	on: (event: string, callback: (result: string) => void) => { clear: () => void };
-}
-
-declare global {
-	interface Window {
-		engine?: Engine;
-	}
-}
+import mod from 'mod.json';
 
 export {};
-export function useEngineOn(event: string, initialState: string) {
-  const [result, setResult] = useState(initialState);
 
-  useEffect(() => {
-    if ("engine" in window && isEngine(window.engine)) {
-      const listener = window.engine.on(event, setResult);
-
-      return () => {
-        listener.clear();
-      };
-    }
-  }, [event]);
-
-  return result;
+export function useEngineOn<T>(bindingName: string, initialState: T) {
+  const binding = bindValue<T>(mod.id, `BINDING:${bindingName}`, initialState);
+  return useValue(binding);
 }
 
-export async function useEngineCall(event: string, data?: string) {
-  return await engineCall(event, data);
+export async function useEngineCall<T>(triggerName: string, data?: string): Promise<T | undefined> {
+  return await engineCall<T>(triggerName, data);
 }
 
 export async function translatePosition(worldPosition: WorldPosition) {
-  const result = await engineCall("C2VM.TLE.CallTranslatePosition", JSON.stringify(worldPosition));
+  const result = await call<string>(mod.id, 'TRIGGER:CallTranslatePosition', JSON.stringify(worldPosition));
   const screenPoint = {left: 0, top: 0};
   if (result) {
     const parsedObj = JSON.parse(result);
@@ -47,21 +28,26 @@ export async function translatePosition(worldPosition: WorldPosition) {
   return screenPoint;
 }
 
-export async function engineCall(event: string, data?: string) {
-  if ("engine" in window && isEngine(window.engine)) {
+export async function engineCall<T>(eventName: string, data?: string): Promise<T | undefined> {
+  const triggerMatch = eventName.match(/^(.+)\.TRIGGER:(.+)$/);
+  if (triggerMatch) {
+    const [, modId, triggerName] = triggerMatch;
     if (data) {
-      return await window.engine.call(event, data);
+      trigger(modId, `TRIGGER:${triggerName}`, data);
     } else {
-      return await window.engine.call(event);
+      trigger(modId, `TRIGGER:${triggerName}`);
     }
+    return undefined;
   }
+  // Fallback for simple trigger names
+  if (data) {
+    trigger(mod.id, `TRIGGER:${eventName}`, data);
+  } else {
+    trigger(mod.id, `TRIGGER:${eventName}`);
+  }
+  return undefined;
 }
 
-interface Engine {
-  call: (event: string, data?: string) => Promise<string>,
-  on: (event: string, callback: (result: string) => void) => ({clear: () => void})
-}
-
-export function isEngine(engine: unknown): engine is Engine {
-  return typeof engine === "object";
+export function triggerEvent(triggerName: string, ...args: any[]) {
+  trigger(mod.id, `TRIGGER:${triggerName}`, ...args);
 }

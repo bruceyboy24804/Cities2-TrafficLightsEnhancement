@@ -6,8 +6,10 @@ using Game.SceneFlow;
 using Game.UI;
 using Game.UI.Localization;
 using C2VM.TrafficLightsEnhancement.Components;
+using Colossal.Entities;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 
 namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
 {
@@ -16,6 +18,9 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
         private EntityQuery _customTrafficLightsQuery;
         private EntityQuery _trafficGroupQuery;
         private EntityQuery _trafficGroupMemberQuery;
+        private EntityQuery _extraLaneSignalQuery;
+        private EntityQuery _edgeGroupMaskQuery;
+        private EntityQuery _customPhaseDataQuery;
         private int _version;
         private bool _loaded = false;
 
@@ -34,6 +39,18 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
             _trafficGroupMemberQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrafficGroupMember>()
                 .Build();
+
+            _extraLaneSignalQuery = SystemAPI.QueryBuilder()
+                .WithAll<ExtraLaneSignal>()
+                .Build();
+
+            _edgeGroupMaskQuery = SystemAPI.QueryBuilder()
+                .WithAll<EdgeGroupMask>()
+                .Build();
+
+            _customPhaseDataQuery = SystemAPI.QueryBuilder()
+                .WithAll<CustomPhaseData>()
+                .Build();
         }
 
         protected override void OnUpdate()
@@ -46,34 +63,115 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
             Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} validating data version {_version}...");
             _loaded = false;
 
-            int affectedCount = 0;
-            int totalEntities = 0;
+            var invalidEntities = new NativeQueue<Entity>(Allocator.TempJob);
+            var commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+            var entityStorageInfoLookup = GetEntityStorageInfoLookup();
 
-            // Validate CustomTrafficLights
+            int totalEntities = 0;
+            JobHandle jobHandle = default;
+
+            // Schedule ExtraLaneSignal validation job
+            if (!_extraLaneSignalQuery.IsEmptyIgnoreFilter)
+            {
+                totalEntities += _extraLaneSignalQuery.CalculateEntityCount();
+                var extraLaneSignalJob = new ValidateExtraLaneSignalJob
+                {
+                    entityTypeHandle = GetEntityTypeHandle(),
+                    extraLaneSignalTypeHandle = GetComponentTypeHandle<ExtraLaneSignal>(),
+                    subLaneData = GetBufferLookup<Game.Net.SubLane>(true),
+                    entityInfoLookup = entityStorageInfoLookup,
+                    invalidEntities = invalidEntities.AsParallelWriter(),
+                    commandBuffer = commandBuffer.AsParallelWriter()
+                };
+                jobHandle = extraLaneSignalJob.ScheduleParallel(_extraLaneSignalQuery, jobHandle);
+            }
+
+            // Schedule CustomTrafficLights validation job
             if (!_customTrafficLightsQuery.IsEmptyIgnoreFilter)
             {
-                var result = ValidateCustomTrafficLights();
-                affectedCount += result.affected;
-                totalEntities += result.total;
+                totalEntities += _customTrafficLightsQuery.CalculateEntityCount();
+                var customTrafficLightsJob = new ValidateCustomTrafficLightsJob
+                {
+                    entityTypeHandle = GetEntityTypeHandle(),
+                    customTrafficLightsTypeHandle = GetComponentTypeHandle<CustomTrafficLights>(),
+                    nodeData = GetComponentLookup<Node>(true),
+                    entityInfoLookup = entityStorageInfoLookup,
+                    invalidEntities = invalidEntities.AsParallelWriter(),
+                    commandBuffer = commandBuffer.AsParallelWriter()
+                };
+                jobHandle = customTrafficLightsJob.ScheduleParallel(_customTrafficLightsQuery, jobHandle);
             }
 
-            // Validate TrafficGroups
+            // Schedule TrafficGroup validation job
             if (!_trafficGroupQuery.IsEmptyIgnoreFilter)
             {
-                var result = ValidateTrafficGroups();
-                affectedCount += result.affected;
-                totalEntities += result.total;
+                totalEntities += _trafficGroupQuery.CalculateEntityCount();
+                var trafficGroupJob = new ValidateTrafficGroupJob
+                {
+                    entityTypeHandle = GetEntityTypeHandle(),
+                    trafficGroupTypeHandle = GetComponentTypeHandle<TrafficGroup>(),
+                    invalidEntities = invalidEntities.AsParallelWriter()
+                };
+                jobHandle = trafficGroupJob.ScheduleParallel(_trafficGroupQuery, jobHandle);
             }
 
-            // Validate TrafficGroupMembers
+            // Schedule TrafficGroupMember validation job
             if (!_trafficGroupMemberQuery.IsEmptyIgnoreFilter)
             {
-                var result = ValidateTrafficGroupMembers();
-                affectedCount += result.affected;
-                totalEntities += result.total;
+                totalEntities += _trafficGroupMemberQuery.CalculateEntityCount();
+                var trafficGroupMemberJob = new ValidateTrafficGroupMemberJob
+                {
+                    entityTypeHandle = GetEntityTypeHandle(),
+                    trafficGroupMemberTypeHandle = GetComponentTypeHandle<TrafficGroupMember>(),
+                    trafficGroupData = GetComponentLookup<TrafficGroup>(true),
+                    entityInfoLookup = entityStorageInfoLookup,
+                    invalidEntities = invalidEntities.AsParallelWriter(),
+                    commandBuffer = commandBuffer.AsParallelWriter()
+                };
+                jobHandle = trafficGroupMemberJob.ScheduleParallel(_trafficGroupMemberQuery, jobHandle);
             }
 
-            // Run version-specific migrations
+            // Schedule EdgeGroupMask validation job
+            if (!_edgeGroupMaskQuery.IsEmptyIgnoreFilter)
+            {
+                totalEntities += _edgeGroupMaskQuery.CalculateEntityCount();
+                var edgeGroupMaskJob = new ValidateEdgeGroupMaskJob
+                {
+                    entityTypeHandle = GetEntityTypeHandle(),
+                    edgeGroupMaskTypeHandle = GetBufferTypeHandle<EdgeGroupMask>(),
+                    edgeData = GetComponentLookup<Edge>(true),
+                    entityInfoLookup = entityStorageInfoLookup,
+                    invalidEntities = invalidEntities.AsParallelWriter(),
+                    commandBuffer = commandBuffer.AsParallelWriter()
+                };
+                jobHandle = edgeGroupMaskJob.ScheduleParallel(_edgeGroupMaskQuery, jobHandle);
+            }
+
+            // Schedule CustomPhaseData validation job
+            if (!_customPhaseDataQuery.IsEmptyIgnoreFilter)
+            {
+                totalEntities += _customPhaseDataQuery.CalculateEntityCount();
+                var customPhaseDataJob = new ValidateCustomPhaseDataJob
+                {
+                    entityTypeHandle = GetEntityTypeHandle(),
+                    customPhaseDataTypeHandle = GetBufferTypeHandle<CustomPhaseData>(),
+                    invalidEntities = invalidEntities.AsParallelWriter()
+                };
+                jobHandle = customPhaseDataJob.ScheduleParallel(_customPhaseDataQuery, jobHandle);
+            }
+
+            // Complete all jobs
+            jobHandle.Complete();
+
+            // Playback command buffer
+            commandBuffer.Playback(EntityManager);
+            commandBuffer.Dispose();
+
+            // Count affected entities
+            int affectedCount = invalidEntities.Count;
+            invalidEntities.Dispose();
+
+            // Run legacy version-specific migrations
             if (_version < TLEDataVersion.V2)
             {
                 MigrateTrafficGroupMembers();
@@ -97,102 +195,10 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
             }
 
+            // Check for groups with followers missing phases
+            CheckGroupsWithMissingPhases();
+
             Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} migration complete. Version {_version} -> {TLEDataVersion.Current}");
-        }
-
-        private (int affected, int total) ValidateCustomTrafficLights()
-        {
-            int affected = 0;
-            int total = 0;
-
-            using (var entities = _customTrafficLightsQuery.ToEntityArray(Allocator.Temp))
-            {
-                total = entities.Length;
-                foreach (var entity in entities)
-                {
-                    if (!EntityManager.HasComponent<Node>(entity))
-                    {
-                        // CustomTrafficLights on non-node entity - invalid
-                        EntityManager.RemoveComponent<CustomTrafficLights>(entity);
-                        affected++;
-                        Mod.m_Log.Warn($"Removed invalid CustomTrafficLights from entity {entity}");
-                    }
-                }
-            }
-
-            return (affected, total);
-        }
-
-        private (int affected, int total) ValidateTrafficGroups()
-        {
-            int affected = 0;
-            int total = 0;
-
-            using (var entities = _trafficGroupQuery.ToEntityArray(Allocator.Temp))
-            {
-                total = entities.Length;
-                foreach (var entity in entities)
-                {
-                    var group = EntityManager.GetComponentData<TrafficGroup>(entity);
-                    
-                    // Validate group settings
-                    bool needsUpdate = false;
-                    
-                    if (group.m_GreenWaveSpeed <= 0)
-                    {
-                        group.m_GreenWaveSpeed = 50f;
-                        needsUpdate = true;
-                    }
-                    
-                    if (group.m_CycleLength <= 0)
-                    {
-                        group.m_CycleLength = 16f;
-                        needsUpdate = true;
-                    }
-                    
-                    if (needsUpdate)
-                    {
-                        EntityManager.SetComponentData(entity, group);
-                        affected++;
-                    }
-                }
-            }
-
-            return (affected, total);
-        }
-
-        private (int affected, int total) ValidateTrafficGroupMembers()
-        {
-            int affected = 0;
-            int total = 0;
-
-            using (var entities = _trafficGroupMemberQuery.ToEntityArray(Allocator.Temp))
-            {
-                total = entities.Length;
-                foreach (var entity in entities)
-                {
-                    var member = EntityManager.GetComponentData<TrafficGroupMember>(entity);
-                    
-                    // Check if group entity still exists
-                    if (member.m_GroupEntity != Entity.Null && !EntityManager.Exists(member.m_GroupEntity))
-                    {
-                        EntityManager.RemoveComponent<TrafficGroupMember>(entity);
-                        affected++;
-                        Mod.m_Log.Warn($"Removed orphaned TrafficGroupMember from entity {entity}");
-                        continue;
-                    }
-                    
-                    // Check if leader entity still exists
-                    if (member.m_LeaderEntity != Entity.Null && !EntityManager.Exists(member.m_LeaderEntity))
-                    {
-                        member.m_LeaderEntity = Entity.Null;
-                        EntityManager.SetComponentData(entity, member);
-                        affected++;
-                    }
-                }
-            }
-
-            return (affected, total);
         }
 
         private void MigrateTrafficGroupMembers()
@@ -270,7 +276,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     if (!EntityManager.HasBuffer<SignalDelayData>(entity))
                         continue;
                         
-                    var buffer = EntityManager.GetBuffer<SignalDelayData>(entity);
+                    EntityManager.TryGetBuffer<SignalDelayData>(entity, false, out var buffer);
                     bool bufferModified = false;
                     
                     for (int i = buffer.Length - 1; i >= 0; i--)
@@ -312,6 +318,176 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
             }
             
             Mod.m_Log.Info($"Migrated {migratedCount} SignalDelayData entries, removed {removedCount} invalid entries");
+        }
+
+        private void CheckGroupsWithMissingPhases()
+        {
+            var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
+            var affectedGroups = new NativeList<Entity>(Allocator.Temp);
+            int affectedFollowerCount = 0;
+
+            using (var groupEntities = _trafficGroupQuery.ToEntityArray(Allocator.Temp))
+            {
+                foreach (var groupEntity in groupEntities)
+                {
+                    Entity leaderEntity = trafficGroupSystem.GetGroupLeader(groupEntity);
+                    if (leaderEntity == Entity.Null)
+                        continue;
+
+                    // Check if leader has CustomPhase pattern
+                    if (!EntityManager.HasComponent<CustomTrafficLights>(leaderEntity))
+                        continue;
+
+                    var leaderLights = EntityManager.GetComponentData<CustomTrafficLights>(leaderEntity);
+                    var leaderPattern = leaderLights.GetPatternOnly();
+
+                    // Only check groups where leader uses CustomPhase
+                    if (leaderPattern != CustomTrafficLights.Patterns.CustomPhase)
+                        continue;
+
+                    // Check if leader has phases
+                    if (!EntityManager.HasBuffer<CustomPhaseData>(leaderEntity))
+                        continue;
+
+                    EntityManager.TryGetBuffer<CustomPhaseData>(leaderEntity, false, out var leaderPhases);
+                    if (leaderPhases.Length == 0)
+                        continue;
+
+                    // Check followers for missing phases
+                    var members = trafficGroupSystem.GetGroupMembers(groupEntity);
+                    bool hasAffectedFollower = false;
+
+                    foreach (var memberEntity in members)
+                    {
+                        if (memberEntity == leaderEntity)
+                            continue;
+
+                        // Check if follower has CustomPhase pattern but no phases
+                        if (EntityManager.HasComponent<CustomTrafficLights>(memberEntity))
+                        {
+                            var memberLights = EntityManager.GetComponentData<CustomTrafficLights>(memberEntity);
+                            var memberPattern = memberLights.GetPatternOnly();
+
+                            if (memberPattern == CustomTrafficLights.Patterns.CustomPhase)
+                            {
+                                bool hasPhases = EntityManager.HasBuffer<CustomPhaseData>(memberEntity) &&
+                                    EntityManager.TryGetBuffer<CustomPhaseData>(memberEntity, false, out var memberPhases);
+
+                                if (!hasPhases )
+                                {
+                                    hasAffectedFollower = true;
+                                    affectedFollowerCount++;
+                                }
+                            }
+                        }
+                    }
+
+                    members.Dispose();
+
+                    if (hasAffectedFollower)
+                    {
+                        affectedGroups.Add(groupEntity);
+                    }
+                }
+            }
+
+            if (affectedGroups.Length > 0)
+            {
+                Mod.m_Log.Warn($"Found {affectedGroups.Length} groups with {affectedFollowerCount} followers missing custom phases");
+
+                // Store affected groups for callback
+                _affectedGroupsForMigration = affectedGroups.ToArray(Allocator.Persistent);
+
+                var messageDialog = new MessageDialog(
+                    "Traffic Lights Enhancement - Phase Configuration",
+                    $"Detected {affectedFollowerCount} group member(s) in {affectedGroups.Length} group(s) that have Custom Phases enabled but no phases configured.\n\n" +
+                    "Would you like to copy phase configurations from the group leader to these members?\n\n" +
+                    "• Yes - Copy phases from leader (recommended)\n" +
+                    "• No - Reset signal configuration (you will need to reconfigure manually)",
+                    LocalizedString.Id("Common.YES"),
+                    LocalizedString.Id("Common.NO"));
+
+                GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, OnMissingPhasesDialogResult);
+            }
+
+            affectedGroups.Dispose();
+        }
+
+        private NativeArray<Entity> _affectedGroupsForMigration;
+
+        private void OnMissingPhasesDialogResult(int result)
+        {
+            if (!_affectedGroupsForMigration.IsCreated)
+                return;
+
+            var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
+            bool copyFromLeader = result == 0; // 0 = Yes/Confirm
+
+            Mod.m_Log.Info($"User selected {(copyFromLeader ? "copy from leader" : "reset to vanilla")} for affected followers");
+
+            foreach (var groupEntity in _affectedGroupsForMigration)
+            {
+                if (!EntityManager.Exists(groupEntity))
+                    continue;
+
+                Entity leaderEntity = trafficGroupSystem.GetGroupLeader(groupEntity);
+                if (leaderEntity == Entity.Null)
+                    continue;
+
+                var members = trafficGroupSystem.GetGroupMembers(groupEntity);
+
+                foreach (var memberEntity in members)
+                {
+                    if (memberEntity == leaderEntity)
+                        continue;
+
+                    if (!EntityManager.HasComponent<CustomTrafficLights>(memberEntity))
+                        continue;
+
+                    var memberLights = EntityManager.GetComponentData<CustomTrafficLights>(memberEntity);
+                    var memberPattern = memberLights.GetPatternOnly();
+
+                    if (memberPattern != CustomTrafficLights.Patterns.CustomPhase)
+                        continue;
+
+                    bool hasPhases = EntityManager.HasBuffer<CustomPhaseData>(memberEntity) &&
+                        EntityManager.GetBuffer<CustomPhaseData>(memberEntity).Length > 0;
+
+                    if (hasPhases)
+                        continue;
+
+                    if (copyFromLeader)
+                    {
+                        // Copy phases from leader
+                        trafficGroupSystem.CopyPhasesToJunction(leaderEntity, memberEntity);
+                        Mod.m_Log.Info($"Copied phases from leader to member {memberEntity.Index}");
+                    }
+                    else
+                    {
+                        // Reset EdgeGroupMask so user has to reconfigure signals manually
+                        if (EntityManager.HasBuffer<EdgeGroupMask>(memberEntity))
+                        {
+                            EntityManager.TryGetBuffer<EdgeGroupMask>(memberEntity, false, out var edgeMasks);
+                            edgeMasks.Clear();
+                        }
+
+                        // Reset SubLaneGroupMask as well
+                        if (EntityManager.HasBuffer<SubLaneGroupMask>(memberEntity))
+                        {
+                            EntityManager.TryGetBuffer<SubLaneGroupMask>(memberEntity, false, out var subLaneMasks);
+                            subLaneMasks.Clear();
+                        }
+
+                        Mod.m_Log.Info($"Reset EdgeGroupMask for member {memberEntity.Index} - user must reconfigure");
+                    }
+
+                    EntityManager.AddComponentData(memberEntity, default(Updated));
+                }
+
+                members.Dispose();
+            }
+
+            _affectedGroupsForMigration.Dispose();
         }
 
         protected override void OnGameLoaded(Context serializationContext)

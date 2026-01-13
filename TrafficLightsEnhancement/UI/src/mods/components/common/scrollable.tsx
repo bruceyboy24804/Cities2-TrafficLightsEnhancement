@@ -1,4 +1,4 @@
-import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import styled from "styled-components";
 
 const Container = styled.div`
@@ -27,7 +27,14 @@ const ScrollbarThumb = styled.div<{active: boolean}>`
   }
 `;
 
-export default function Scrollable(props: {style?: CSSProperties, contentStyle?: CSSProperties, trackStyle?: CSSProperties, children?: React.ReactNode}) {
+export interface ScrollableRef {
+  getScrollPosition: () => number;
+  setScrollPosition: (position: number) => void;
+  scrollBy: (delta: number) => void;
+  getContainerRect: () => DOMRect | null;
+}
+
+const Scrollable = forwardRef<ScrollableRef, {style?: CSSProperties, contentStyle?: CSSProperties, trackStyle?: CSSProperties, children?: React.ReactNode}>((props, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const childrenRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -89,8 +96,34 @@ export default function Scrollable(props: {style?: CSSProperties, contentStyle?:
       };
     }
   }, [dragging, mouseUpHandler, mouseMoveHandler]);
+
+  useImperativeHandle(ref, () => ({
+    getScrollPosition: () => containerRef.current?.scrollTop || 0,
+    setScrollPosition: (position: number) => {
+      if (containerRef.current) {
+        containerRef.current.scrollTop = position;
+        updateThumbPosition();
+      }
+    },
+    scrollBy: (delta: number) => {
+      if (containerRef.current) {
+        containerRef.current.scrollTop += delta;
+        updateThumbPosition();
+      }
+    },
+    getContainerRect: () => containerRef.current?.getBoundingClientRect() || null
+  }), [updateThumbPosition]);
+
   return (
-    <Container style={props.style}>
+    <Container
+      style={props.style}
+      onPointerDownCapture={(event: React.PointerEvent) => {
+        console.log("[Scrollable] pointer down", {
+          targetTag: (event.target as HTMLElement)?.tagName,
+          className: (event.target as HTMLElement)?.className
+        });
+      }}
+    >
       <ContentContainer style={props.contentStyle} ref={containerRef} onScroll={updateThumbPosition}>
         <div ref={childrenRef}>{props.children}</div>
       </ContentContainer>
@@ -103,4 +136,8 @@ export default function Scrollable(props: {style?: CSSProperties, contentStyle?:
       </ScrollbarTrack>}
     </Container>
   );
-}
+});
+
+Scrollable.displayName = 'Scrollable';
+
+export default Scrollable;

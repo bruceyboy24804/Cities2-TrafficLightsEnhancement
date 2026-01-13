@@ -51,22 +51,33 @@ public struct EdgeGroupMask : IBufferElementData, ISerializable, IJsonWritable
     public void Deserialize<TReader>(TReader reader) where TReader : IReader
     {
         reader.Read(out ushort version);
+        reader.Read(out m_Edge);
+        reader.Read(out float3 edgePosition);
+        reader.Read(out uint options);
+        reader.Read(out m_Car);
+        reader.Read(out m_PublicCar);
+        reader.Read(out m_Track);
         
-        if (version <= TLEDataVersion.V2)
+        if (version >= TLEDataVersion.V2)
         {
-            reader.Read(out m_Edge);
-            reader.Read(out float3 edgePosition);
-            reader.Read(out uint options);
-            reader.Read(out m_Car);
-            reader.Read(out m_PublicCar);
-            reader.Read(out m_Track);
             reader.Read(out m_Pedestrian);
             reader.Read(out m_Bicycle);
             reader.Read(out m_OpenDelay);
             reader.Read(out m_CloseDelay);
-            m_Position = edgePosition;
-            m_Options = (Options)options;
         }
+        else
+        {
+            // Old format: reads 2 signals, merges them
+            reader.Read(out GroupMask.Signal signal1);
+            reader.Read(out GroupMask.Signal signal2);
+            m_Pedestrian = signal1.m_GoGroupMask != 0 ? signal1 : signal2;
+            m_Bicycle = new GroupMask.Signal();
+            m_OpenDelay = 0;
+            m_CloseDelay = 0;
+        }
+        
+        m_Position = edgePosition;
+        m_Options = (Options)options;
     }
 
     public void Write(IJsonWriter writer)

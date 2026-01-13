@@ -5,13 +5,15 @@ import { TextInput } from 'mods/components/common/TextInput';
 import classNames from "classnames";
 import { ReactNode } from "react";
 import { trigger, useValue } from "cs2/api";
-import { PanelFoldout, Tooltip } from "cs2/ui";
+import { Dropdown, DropdownItem, DropdownToggle, PanelFoldout, Tooltip } from "cs2/ui";
 import Divider from "mods/components/main-panel/items/divider"
 import { MainPanelItem, MainPanelItemTrafficGroup, GroupMemberInfo, MemberPhaseData, EdgeInfo, EdgeGroupMask, CustomPhaseSignalState, CustomPhaseLaneType, CustomPhaseLaneDirection, PatternInfo } from 'mods/general';
 import { 
 	callCreateTrafficGroup, 
 	callDeleteTrafficGroup, 
 	callEnterAddMemberMode,
+	callEnterSelectMemberMode,
+	callExitSelectMemberMode,
 	callRemoveJunctionFromGroup, 
 	callSelectJunction, 
 	callSetTrafficGroupName, 
@@ -338,6 +340,25 @@ const AddMemberButton = ({ currentGroup }: { currentGroup: MainPanelItemTrafficG
 	return (
 		<Row hoverEffect={true}>
 			<Button label="Add Member" onClick={clickHandler} />
+		</Row>
+	);
+};
+
+const SelectMemberInWorldButton = ({ currentGroup }: { currentGroup: MainPanelItemTrafficGroup | undefined }) => {
+	const clickHandler = () => {
+		if (currentGroup) {
+			callEnterSelectMemberMode(JSON.stringify({
+				groupIndex: currentGroup.groupIndex,
+				groupVersion: currentGroup.groupVersion
+			}));
+		}
+	};
+	
+	return (
+		<Row hoverEffect={true}>
+			<Tooltip tooltip="Click to select a group member in the world. Only existing members can be selected (orange highlight)." direction="up">
+				<Button label="Select Member In World" onClick={clickHandler} />
+			</Tooltip>
 		</Row>
 	);
 };
@@ -708,7 +729,8 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 						
 							<Divider />
 							<div className={styles.sectionTitle}>Group Members</div>
-								{displayedGroup.members && displayedGroup.members.length > 0 ? (
+							
+							{displayedGroup.members && displayedGroup.members.length > 0 ? (
 								<>
 									
 									{displayedGroup.members.map((member) => (
@@ -730,6 +752,7 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 							)}
 
 							<AddMemberButton currentGroup={displayedGroup} />
+							<SelectMemberInWorldButton currentGroup={displayedGroup} />
 							{currentGroup && <RemoveFromGroupButton />}
 							{displayedGroup.isCurrentJunctionInGroup && displayedGroup.members && displayedGroup.members.length > 1 && (() => {
 								const currentMember = displayedGroup.members.find(m => m.isCurrentJunction);

@@ -7,10 +7,11 @@ export interface MainPanel {
   showPanel: boolean,
   showFloatingButton: boolean,
   state: number,
+  selectedEntity: { index: number, version: number },
   items: MainPanelItem[]
 }
 
-export type MainPanelItem = MainPanelItemTitle | MainPanelItemMessage | MainPanelItemDivider | MainPanelItemRadio | MainPanelItemCheckbox | MainPanelItemButton | MainPanelItemNotification | MainPanelItemRange | MainPanelItemCustomPhase;
+export type MainPanelItem = MainPanelItemTitle | MainPanelItemMessage | MainPanelItemDivider | MainPanelItemRadio | MainPanelItemCheckbox | MainPanelItemButton | MainPanelItemNotification | MainPanelItemRange | MainPanelItemCustomPhaseHeader | MainPanelItemCustomPhase | MainPanelItemTrafficGroup;
 
 export interface MainPanelItemTitle {
   itemType: "title",
@@ -79,7 +80,14 @@ export interface MainPanelItemRange {
   defaultValue: number,
   enableTextField?: boolean,
   textFieldRegExp?: string,
-  engineEventName: string
+  engineEventName: string,
+  tooltip?: string,
+}
+
+export interface MainPanelItemCustomPhaseHeader {
+  itemType: "customPhaseHeader",
+  trafficLightMode: number,
+  phaseCount: number,
 }
 
 export interface MainPanelItemCustomPhase {
@@ -98,19 +106,49 @@ export interface MainPanelItemCustomPhase {
   publicCarLaneOccupied: number,
   trackLaneOccupied: number,
   pedestrianLaneOccupied: number,
+  bicycleLaneOccupied: number,
   weightedWaiting: number,
   targetDuration: number,
   priority: number,
   minimumDuration: number,
   maximumDuration: number,
   targetDurationMultiplier: number,
-  laneOccupiedMultiplier: number,
   intervalExponent: number,
-  prioritiseTrack: boolean,
-  prioritisePublicCar: boolean,
-  prioritisePedestrian: boolean,
   linkedWithNextPhase: boolean,
   endPhasePrematurely: boolean,
+  // Step change metric settings
+  changeMetric: number,
+  waitFlowBalance: number,
+  // Traffic light mode (0=Dynamic/CustomPhase, 1=FixedTimed)
+  trafficLightMode: number,
+  // Traffic light active states
+  carActive: boolean;
+  publicCarActive: boolean;
+  trackActive: boolean;
+  pedestrianActive: boolean;
+  bicycleActive: boolean;
+  // Signal delay data
+  hasSignalDelays?: boolean,
+  carOpenDelay?: number,
+  carCloseDelay?: number,
+  publicCarOpenDelay?: number,
+  publicCarCloseDelay?: number,
+  trackOpenDelay?: number,
+  trackCloseDelay?: number,
+  pedestrianOpenDelay?: number,
+  pedestrianCloseDelay?: number,
+  bicycleOpenDelay?: number,
+  bicycleCloseDelay?: number,
+  // TMPE-style vehicle weights
+  carWeight: number,
+  publicCarWeight: number,
+  trackWeight: number,
+  pedestrianWeight: number,
+  bicycleWeight: number,
+  smoothingFactor: number,
+  // Flow/wait ratios (read-only statistics)
+  flowRatio: number,
+  waitRatio: number,
 }
 
 export interface WorldPosition {
@@ -139,18 +177,30 @@ export interface CustomPhaseLane {
   straight: CustomPhaseSignalState,
   right: CustomPhaseSignalState,
   uTurn: CustomPhaseSignalState,
-  all: CustomPhaseSignalState
+  all: CustomPhaseSignalState,
+  leftDelay?: SignalDelay,
+  straightDelay?: SignalDelay,
+  rightDelay?: SignalDelay,
+  uTurnDelay?: SignalDelay,
+  allDelay?: SignalDelay
 }
 
-export type CustomPhaseLaneType = "carLane" | "publicCarLane" | "trackLane" | "pedestrianLaneStopLine" | "pedestrianLaneNonStopLine";
+export type CustomPhaseLaneType = "carLane" | "publicCarLane" | "trackLane" | "bicycleLane" | "pedestrianLaneStopLine" | "pedestrianLaneNonStopLine";
 
 export type CustomPhaseLaneDirection = "left" | "straight" | "right" | "uTurn" | "all";
 
 export type CustomPhaseSignalState = "stop" | "go" | "yield" | "none";
 
+export interface SignalDelay {
+  openDelay: number;
+  closeDelay: number;
+}
+
 export interface GroupMaskSignal {
   m_GoGroupMask: number,
-  m_YieldGroupMask: number
+  m_YieldGroupMask: number,
+  m_OpenDelay?: number,
+  m_CloseDelay?: number
 }
 
 export interface GroupMaskTurn {
@@ -167,11 +217,12 @@ export interface EdgeGroupMask {
   m_Car: GroupMaskTurn,
   m_PublicCar: GroupMaskTurn,
   m_Track: GroupMaskTurn,
-  m_PedestrianStopLine: GroupMaskSignal,
-  m_PedestrianNonStopLine: GroupMaskSignal
+  m_Pedestrian: GroupMaskSignal,
+  m_Bicycle: GroupMaskSignal
 }
 
 export interface EdgeInfo {
+  m_Node: Entity,
   m_Edge: Entity,
   m_Position: WorldPosition,
   m_CarLaneLeftCount: number,
@@ -188,8 +239,11 @@ export interface EdgeInfo {
   m_TrainTrackCount: number,
   m_PedestrianLaneStopLineCount: number,
   m_PedestrianLaneNonStopLineCount: number,
+  m_BicycleLaneCount: number,
   m_SubLaneInfoList: SubLaneInfo[],
-  m_EdgeGroupMask: EdgeGroupMask
+  m_EdgeGroupMask: EdgeGroupMask,
+  m_OpenDelay?: number,
+  m_CloseDelay?: number
 }
 
 export interface SubLaneGroupMask {
@@ -211,6 +265,7 @@ export interface SubLaneInfo {
   m_TrackLaneLeftCount: number,
   m_TrackLaneStraightCount: number,
   m_TrackLaneRightCount: number,
+   m_BicycleLaneCount: number,
   m_PedestrianLaneCount: number,
   m_SubLaneGroupMask: SubLaneGroupMask
 }
@@ -218,4 +273,55 @@ export interface SubLaneInfo {
 export interface ToolTooltipMessage {
   image: string,
   message: string
+}
+
+export interface MemberPhaseData {
+  index: number;
+  minimumDuration: number;
+  maximumDuration: number;
+}
+
+export interface PatternInfo {
+  name: string;
+  value: number;
+}
+
+export interface GroupMemberInfo {
+  entity: Entity;
+  index: number;
+  version: number;
+  isLeader: boolean;
+  distanceToLeader: number;
+  phaseOffset: number;
+  signalDelay: number;
+  isCurrentJunction: boolean;
+  phases?: MemberPhaseData[];
+  phaseCount?: number;
+  currentPattern?: number;
+  availablePatterns?: PatternInfo[];
+  hasTrainTrack?: boolean;
+}
+
+export interface MainPanelItemTrafficGroup {
+  itemType: "trafficGroup",
+  groupIndex: number,
+  groupVersion: number,
+  name: string,
+  memberCount: number,
+  isCoordinated: boolean,
+  isCurrentJunctionInGroup: boolean,
+  greenWaveEnabled: boolean,
+  greenWaveSpeed: number,
+  greenWaveOffset: number,
+  leaderIndex?: number,
+  leaderVersion?: number,
+  currentJunctionIndex?: number,
+  currentJunctionVersion: number;
+  members?: GroupMemberInfo[];
+  distanceToLeader?: number,
+  phaseOffset?: number,
+  signalDelay?: number,
+  isCurrentJunctionLeader?: boolean,
+  previousState?: number,
+  cycleLength?: number,
 }

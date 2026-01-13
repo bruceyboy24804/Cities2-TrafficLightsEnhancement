@@ -1,7 +1,7 @@
 import { CSSProperties, useContext } from "react";
 import styled from "styled-components";
 
-import { call } from "cs2/api";
+import { callSetActiveCustomPhaseIndex } from "bindings";
 
 import { LocaleContext } from "../../../context";
 import { getString } from "../../../localisations";
@@ -38,7 +38,7 @@ const ItemContainerStyle: CSSProperties = {
 
 const BackButton = () => {
   const clickHandler = () => {
-    call("C2VM.TLE", "CallSetActiveCustomPhaseIndex", JSON.stringify({key: "ManualSignalGroup", value: 0}));
+    callSetActiveCustomPhaseIndex(JSON.stringify({key: "ManualSignalGroup", value: 0}));
   };
   return (
     <Row hoverEffect={true} onClick={clickHandler}>
@@ -50,7 +50,7 @@ const BackButton = () => {
 function Item(props: {data: MainPanelItemCustomPhase}) {
   const locale = useContext(LocaleContext);
   const clickHandler = () => {
-    call("C2VM.TLE", "CallSetActiveCustomPhaseIndex", JSON.stringify({key: "ManualSignalGroup", value: props.data.index + 1}));
+    callSetActiveCustomPhaseIndex(JSON.stringify({key: "ManualSignalGroup", value: props.data.index + 1}));
   };
   return (
     <Row onClick={clickHandler}>
