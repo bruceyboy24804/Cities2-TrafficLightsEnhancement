@@ -28,7 +28,7 @@ public struct CustomTrafficLights : IComponentData, IQueryTypeParameter, ISerial
 
   public void Deserialize<TReader>(TReader reader) where TReader : IReader
   {
-    // Initialize to defaults
+    
     m_PedestrianPhaseDurationMultiplier = 1f;
     m_PedestrianPhaseGroupMask = 0;
     m_Timer = 0U;
@@ -43,7 +43,7 @@ public struct CustomTrafficLights : IComponentData, IQueryTypeParameter, ISerial
     
     if (version < TLEDataVersion.V2)
     {
-      // Old format: 16 uints (old pattern array)
+      
       for (int i = 1; i < 16; i++)
         reader.Read(out uint _);
       m_Pattern = Patterns.Vanilla;
@@ -83,7 +83,7 @@ public struct CustomTrafficLights : IComponentData, IQueryTypeParameter, ISerial
 
   public Patterns GetPatternOnly()
   {
-    return GetPattern() & (Patterns) 65535 /*0xFFFF*/;
+    return GetPattern() & (Patterns) 65535 ;
   }
 
   public void SetPattern(uint pattern) => SetPattern((Patterns) pattern);

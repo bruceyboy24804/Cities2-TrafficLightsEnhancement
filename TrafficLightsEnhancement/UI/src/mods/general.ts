@@ -116,18 +116,18 @@ export interface MainPanelItemCustomPhase {
   intervalExponent: number,
   linkedWithNextPhase: boolean,
   endPhasePrematurely: boolean,
-  // Step change metric settings
+  
   changeMetric: number,
   waitFlowBalance: number,
-  // Traffic light mode (0=Dynamic/CustomPhase, 1=FixedTimed)
+  
   trafficLightMode: number,
-  // Traffic light active states
+  
   carActive: boolean;
   publicCarActive: boolean;
   trackActive: boolean;
   pedestrianActive: boolean;
   bicycleActive: boolean;
-  // Signal delay data
+  
   hasSignalDelays?: boolean,
   carOpenDelay?: number,
   carCloseDelay?: number,
@@ -139,14 +139,14 @@ export interface MainPanelItemCustomPhase {
   pedestrianCloseDelay?: number,
   bicycleOpenDelay?: number,
   bicycleCloseDelay?: number,
-  // TMPE-style vehicle weights
+  
   carWeight: number,
   publicCarWeight: number,
   trackWeight: number,
   pedestrianWeight: number,
   bicycleWeight: number,
   smoothingFactor: number,
-  // Flow/wait ratios (read-only statistics)
+  
   flowRatio: number,
   waitRatio: number,
 }

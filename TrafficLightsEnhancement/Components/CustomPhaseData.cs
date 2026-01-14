@@ -277,7 +277,7 @@ public struct CustomPhaseData : IBufferElementData, ISerializable
         float rawWeighted = WeightedLaneOccupied() * m_LaneOccupiedMultiplier * 
             math.pow((float)m_TurnsSinceLastRun / (float)phaseCount, m_IntervalExponent);
         
-        // Apply smoothing: blend with previous value
+        
         float smoothed = (m_SmoothingFactor * m_WeightedWaiting) + ((1f - m_SmoothingFactor) * rawWeighted);
         return smoothed;
     }

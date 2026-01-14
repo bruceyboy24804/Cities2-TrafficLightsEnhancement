@@ -1,6 +1,6 @@
 
 
-//divider.tsx
+
 .dividerContainer{
     height: 2rem;
     width: auto;
@@ -12,14 +12,14 @@
     
 }
 
-//message.tsx
+
 .messageContainer{
     margin: 20rem auto;
     flex: 1;
     text-align: center;
 }
 
-//notification.tsx
+
 .notice{
     border-radius: 3rem;
     padding: 8rem;
@@ -49,7 +49,7 @@
     justify-content: center;
 }
 
-//radio.tsx
+
 .radioContainer{
     padding: 0.25em 0.5em;
     width: 100%;
@@ -92,7 +92,7 @@
 }
 
 
-//range.tsx
+
 .rangeContainer{
     padding: 4rem 8rem;
 }
@@ -125,7 +125,7 @@
     font-size: 1em;
 }
 
-//row.tsx
+
 .rowContainer{
     padding: 0.25em 0.5em;
     width: 100%;
@@ -140,7 +140,7 @@
         }
     }
 }
-//title-dim.tsx
+
 .titleDimContainer{
     display: flex;
     justify-content: space-between;
@@ -160,7 +160,7 @@
     margin-left: 6rem;
 }
 
-//title.tsx
+
 .titleContainer{
     display: flex;
     justify-content: space-between;

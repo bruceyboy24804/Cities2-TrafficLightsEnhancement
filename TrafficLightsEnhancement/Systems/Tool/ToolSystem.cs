@@ -46,10 +46,10 @@ public partial class ToolSystem : NetToolSystem
 
     private StringTooltip m_SelectGroupMemberTooltip;
 
-    // Add a scale factor for the overlay circle (1.0 = original size, 0.7 = 70% of original)
+    
     private const float CircleScale = 0.7f;
 
-    // Circle colors for different modes
+    
     private static readonly Color DefaultCircleColor = new Color(0.5f, 1.0f, 2.0f, 1.0f);
     private static readonly Color SelectMemberCircleColor = new Color(1.0f, 0.6f, 0.0f, 1.0f);
 
@@ -107,11 +107,11 @@ public partial class ToolSystem : NetToolSystem
                 {
                     if (EntityManager.HasComponent<CustomTrafficLights>(m_RaycastResult))
                     {
-                        // Remove from traffic group first if member
+                        
                         var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
                         trafficGroupSystem.RemoveJunctionFromGroup(m_RaycastResult);
                         
-                        // Remove all TLE-related components and buffers
+                        
                         EntityManager.RemoveComponent<CustomTrafficLights>(m_RaycastResult);
                         if (EntityManager.HasBuffer<CustomPhaseData>(m_RaycastResult))
                         {
@@ -141,7 +141,7 @@ public partial class ToolSystem : NetToolSystem
                     UpdateTooltip(m_RaycastResult);
                 }
 
-                // Draw circle every frame while hovering (OverlayRenderSystem clears each frame)
+                
                 bool isSelectMemberMode = m_UISystem.IsSelectingGroupMember;
                 bool isValidForMode = isSelectMemberMode
                     ? m_UISystem.IsEntityInTargetGroup(m_RaycastResult)
@@ -155,10 +155,10 @@ public partial class ToolSystem : NetToolSystem
                     float3 center = (nodeGeometry.m_Bounds.min + nodeGeometry.m_Bounds.max) * 0.5f;
                     float diameter = nodeGeometry.m_Bounds.max.x - nodeGeometry.m_Bounds.min.x;
 
-                    // Apply scaling and ensure a positive non-zero diameter
+                    
                     diameter = math.max(0.01f, diameter * CircleScale);
 
-                    // Use different color for select member mode
+                    
                     Color circleColor = isSelectMemberMode ? SelectMemberCircleColor : DefaultCircleColor;
                     overlayBuffer.DrawCircle(circleColor, center, diameter);
                 }
@@ -176,14 +176,14 @@ public partial class ToolSystem : NetToolSystem
 
                 if (isSelectMemberMode)
                 {
-                    // In select member mode, only allow selecting existing group members
+                    
                     if (entity != Entity.Null && m_UISystem.IsEntityInTargetGroup(entity))
                     {
                         m_UISystem.ChangeSelectedEntity(entity);
                     }
                     else
                     {
-                        // Exit select member mode and return to normal if clicked on non-member
+                        
                         m_UISystem.ExitSelectMemberMode();
                     }
                 }
@@ -242,7 +242,7 @@ public partial class ToolSystem : NetToolSystem
     {
         m_TooltipSystem.m_TooltipList.Clear();
 
-        // In select member mode, show different tooltip
+        
         if (m_UISystem.IsSelectingGroupMember)
         {
             if (m_UISystem.IsEntityInTargetGroup(entity))

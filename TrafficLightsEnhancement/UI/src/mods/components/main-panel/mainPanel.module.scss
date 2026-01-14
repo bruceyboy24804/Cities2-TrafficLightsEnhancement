@@ -1,4 +1,4 @@
-//content.tsx
+
 
 .contentContainer {
   width: 18em;
@@ -16,7 +16,7 @@
   flex: 1;
 }
 
-//header.tsx
+
 
 .headerContainer {
   background-color: var(--panelColorDark);
@@ -45,7 +45,7 @@
   white-space: nowrap;
 }
 
-//index.tsx
+
 .indexContainer {
   position: absolute;
   top: calc(10rem + var(--floatingToggleSize));

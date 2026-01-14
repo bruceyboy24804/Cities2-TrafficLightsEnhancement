@@ -49,29 +49,29 @@ export default function TrafficSignButton(props: {
     textY = 75;
     fontSize = 80;
   }
-  // if (props.state == "yield") {
-  //   textX = 50;
-  //   textY = 50;
-  //   fontSize = 55;
-  //   signColor = "black";
-  //   if (props.sign == "↑") {
-  //     textY = 55;
-  //   }
-  //   if (props.sign == "↶") {
-  //     fontSize = 40;
-  //     textY = 42;
-  //   }
-  //   if (props.sign == "↷") {
-  //     fontSize = 40;
-  //     textY = 42;
-  //   }
-  // }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
   return (
     <Button onClick={props.onClick} style={props.style}>
       <svg width="100%" height="100%" viewBox="0 0 100 100">
         {props.state != "none" && <circle cx="50" cy="50" r="45" stroke={border} strokeWidth="10" fill={backgroundColor} />}
-        {/* {props.state == "yield" && <polygon points="50 10, 90 95, 10 95" stroke="rgb(240, 0, 0)" strokeWidth="8" fill="rgb(240, 240, 240)" transform="rotate(180 50 50)" />} */}
+        {}
         {props.variant != "pedestrian" && <text
           x={textX}
           y={textY}

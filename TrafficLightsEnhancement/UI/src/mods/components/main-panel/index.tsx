@@ -87,7 +87,7 @@ export default function MainPanel() {
     }
   }, [panel.showPanel, panel.showFloatingButton, panel.position.top, panel.position.left, dragging]);
 
-  // Save everything when the panel is closed
+  
   useEffect(() => {
     return () => {
       callMainPanelSave("{}");
@@ -159,7 +159,7 @@ export default function MainPanel() {
       }
     }
     return result;
-  }, [showPanel, top, left, container, toolSideColumn, recalc, panel]); // Recalc values on recalc or panel change
+  }, [showPanel, top, left, container, toolSideColumn, recalc, panel]); 
 
   return (
     <>

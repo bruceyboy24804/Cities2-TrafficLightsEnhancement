@@ -16,7 +16,7 @@ import styles from './itemsStyling.module.scss';
 
 
 
-// Props for using CS2 API bindings directly
+
 export interface MainPanelRangeBindingProps {
   binding?: ValueBinding<number>;
   value?: number;
@@ -39,7 +39,7 @@ export interface MainPanelRangeBindingProps {
   className?: string;
 }
 
-// Props for using existing MainPanelItemRange data object
+
 export interface MainPanelRangeDataProps {
   data: MainPanelItemRange;
   onChangeOverride?: (value: number) => void;
@@ -49,13 +49,13 @@ export interface MainPanelRangeDataProps {
 
 export type MainPanelRangeProps = MainPanelRangeDataProps | MainPanelRangeBindingProps;
 
-// Type guard to check if props use data object
+
 function isDataProps(props: MainPanelRangeProps): props is MainPanelRangeDataProps {
   return 'data' in props;
 }
 
 export default function MainPanelRange(props: MainPanelRangeProps) {
-  // Normalize props to a common shape
+  
   const config = isDataProps(props) ? {
     label: props.data.label,
     value: props.data.value,
@@ -100,7 +100,7 @@ export default function MainPanelRange(props: MainPanelRangeProps) {
       props.onChangeOverride(newValue);
       return;
     }
-    // Handle CS2 API trigger with key
+    
     if ('triggerGroup' in config && config.triggerGroup && config.triggerName) {
       if ('key' in config && config.key) {
         trigger(config.triggerGroup, config.triggerName, JSON.stringify({key: config.key, value: newValue}));
@@ -108,7 +108,7 @@ export default function MainPanelRange(props: MainPanelRangeProps) {
         trigger(config.triggerGroup, config.triggerName, newValue);
       }
     }
-    // Handle engineEventName with TRIGGER: format (CS2 API)
+    
     else if ('engineEventName' in config && config.engineEventName && 'key' in config) {
       const eventName = config.engineEventName;
       const triggerMatch = eventName.match(/^(.+)\.TRIGGER:(.+)$/);
@@ -166,7 +166,7 @@ export default function MainPanelRange(props: MainPanelRangeProps) {
     <TitleDim itemType="title" title={config.label} secondaryText={!textFieldActive ? getString(locale, config.valuePrefix) + `${Math.round(value * 100) / 100}` + getString(locale, config.valueSuffix) : ""} />
   );
 
-  // Create a compatible data object for the Range component
+  
   const rangeData = {
     min: config.min,
     max: config.max,

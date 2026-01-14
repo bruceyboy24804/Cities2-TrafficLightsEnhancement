@@ -117,7 +117,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Overlay
             m_IconComputeBufferID = Shader.PropertyToID("instanceBuffer");
             m_IconComputeBuffer = new ComputeBuffer(64, sizeof(NotificationIconBufferSystem.InstanceData), ComputeBufferType.Default, ComputeBufferMode.Dynamic);
 
-            ClearIconList(); // Reset m_IconBounds
+            ClearIconList(); 
         }
 
         protected override void OnDestroy()

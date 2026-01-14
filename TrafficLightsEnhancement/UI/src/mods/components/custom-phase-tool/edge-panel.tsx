@@ -190,14 +190,13 @@ export default function EdgePanel(props: {data: EdgeInfo, index: number, positio
   
   const bicycleLaneCount = props.data.m_BicycleLaneCount ?? 0;
   
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (containerRef != null && containerRef.current != null && props.position) {
-      // @ts-expect-error:  cohtml specific extension
-      containerRef.current.style.leftPX = props.position.left;
-      // @ts-expect-error: cohtml specific extension
-      containerRef.current.style.topPX = props.position.top;
+      const el = containerRef.current;
+      el.style.left = `${props.position.left}px`;
+      el.style.top = `${props.position.top}px`;
     }
   }, [containerRef, props.position]);
 

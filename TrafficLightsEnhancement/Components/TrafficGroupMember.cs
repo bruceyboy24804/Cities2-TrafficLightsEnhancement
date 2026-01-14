@@ -34,7 +34,7 @@ public struct TrafficGroupMember : IComponentData, ISerializable
         
         if (version < TLEDataVersion.V2)
         {
-            // Old format: first int was Entity.Index, next int is Entity.Version
+            
             reader.Read(out int entityVersion);
             m_GroupEntity = new Entity { Index = version, Version = entityVersion };
             reader.Read(out m_LeaderEntity);

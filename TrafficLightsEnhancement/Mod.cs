@@ -37,16 +37,7 @@ public class Mod : IMod
     {
         m_Log.Info($"Loading {m_Id} v{InformationalVersion}");
 
-        /*var outdatedType = System.Type.GetType("C2VM.TrafficLightsEnhancement.Plugin, C2VM.TrafficLightsEnhancement") ?? System.Type.GetType("C2VM.CommonLibraries.LaneSystem.Plugin, C2VM.CommonLibraries.LaneSystem");
-        if (outdatedType != null)
-        {
-            throw new System.Exception($"An outdated version of Traffic Lights Enhancement has been detected at {outdatedType.Assembly.Location}");
-        }
-
-        if (GameManager.instance.modManager.TryGetExecutableAsset(this, out var asset))
-        {
-            m_Log.Info($"Current mod asset at {asset.path}");
-        }*/
+        
 
         m_World = updateSystem.World;
 
@@ -70,7 +61,7 @@ public class Mod : IMod
 
     public void SystemSetup(UpdateSystem updateSystem)
     {
-        m_World.GetOrCreateSystemManaged<Game.Tools.NetToolSystem>(); // Ensure NetToolSystem is created before our tool
+        m_World.GetOrCreateSystemManaged<Game.Tools.NetToolSystem>(); 
         
         var noneList = new NativeList<ComponentType>(1, Allocator.Temp);
         noneList.Add(ComponentType.ReadOnly<Components.CustomTrafficLights>());

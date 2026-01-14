@@ -110,7 +110,7 @@ public partial class UISystem: ExtendedUISystemBase
         SetupKeyBindings();
         UpdateLocale();
         
-        // Initialize TrafficGroupUI system
+        
 
         GameManager.instance.localizationManager.onActiveDictionaryChanged += UpdateLocale;
         
@@ -147,7 +147,7 @@ public partial class UISystem: ExtendedUISystemBase
 
     public void SetMainPanelState(MainPanelState state)
     {
-        // Track previous state when switching to TrafficGroups
+        
         if (state == MainPanelState.TrafficGroups && m_MainPanelState != MainPanelState.TrafficGroups)
         {
             m_PreviousMainPanelState = m_MainPanelState;
@@ -225,7 +225,7 @@ public partial class UISystem: ExtendedUISystemBase
                 {
                     if (memberEntity != node && !m_EdgeInfoDictionary.ContainsKey(memberEntity))
                     {
-                        // Only include edge info for followers that have at least 1 phase configured
+                        
                         bool hasPhases = EntityManager.HasBuffer<CustomPhaseData>(memberEntity) && 
                             EntityManager.GetBuffer<CustomPhaseData>(memberEntity).Length > 0;
                         

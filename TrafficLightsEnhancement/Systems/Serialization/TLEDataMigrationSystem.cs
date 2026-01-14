@@ -70,7 +70,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
             int totalEntities = 0;
             JobHandle jobHandle = default;
 
-            // Schedule ExtraLaneSignal validation job
+            
             if (!_extraLaneSignalQuery.IsEmptyIgnoreFilter)
             {
                 totalEntities += _extraLaneSignalQuery.CalculateEntityCount();
@@ -86,7 +86,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = extraLaneSignalJob.ScheduleParallel(_extraLaneSignalQuery, jobHandle);
             }
 
-            // Schedule CustomTrafficLights validation job
+            
             if (!_customTrafficLightsQuery.IsEmptyIgnoreFilter)
             {
                 totalEntities += _customTrafficLightsQuery.CalculateEntityCount();
@@ -102,7 +102,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = customTrafficLightsJob.ScheduleParallel(_customTrafficLightsQuery, jobHandle);
             }
 
-            // Schedule TrafficGroup validation job
+            
             if (!_trafficGroupQuery.IsEmptyIgnoreFilter)
             {
                 totalEntities += _trafficGroupQuery.CalculateEntityCount();
@@ -115,7 +115,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = trafficGroupJob.ScheduleParallel(_trafficGroupQuery, jobHandle);
             }
 
-            // Schedule TrafficGroupMember validation job
+            
             if (!_trafficGroupMemberQuery.IsEmptyIgnoreFilter)
             {
                 totalEntities += _trafficGroupMemberQuery.CalculateEntityCount();
@@ -131,7 +131,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = trafficGroupMemberJob.ScheduleParallel(_trafficGroupMemberQuery, jobHandle);
             }
 
-            // Schedule EdgeGroupMask validation job
+            
             if (!_edgeGroupMaskQuery.IsEmptyIgnoreFilter)
             {
                 totalEntities += _edgeGroupMaskQuery.CalculateEntityCount();
@@ -147,7 +147,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = edgeGroupMaskJob.ScheduleParallel(_edgeGroupMaskQuery, jobHandle);
             }
 
-            // Schedule CustomPhaseData validation job
+            
             if (!_customPhaseDataQuery.IsEmptyIgnoreFilter)
             {
                 totalEntities += _customPhaseDataQuery.CalculateEntityCount();
@@ -160,18 +160,18 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = customPhaseDataJob.ScheduleParallel(_customPhaseDataQuery, jobHandle);
             }
 
-            // Complete all jobs
+            
             jobHandle.Complete();
 
-            // Playback command buffer
+            
             commandBuffer.Playback(EntityManager);
             commandBuffer.Dispose();
 
-            // Count affected entities
+            
             int affectedCount = invalidEntities.Count;
             invalidEntities.Dispose();
 
-            // Run legacy version-specific migrations
+            
             if (_version < TLEDataVersion.V2)
             {
                 MigrateTrafficGroupMembers();
@@ -195,7 +195,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
             }
 
-            // Check for groups with followers missing phases
+            
             CheckGroupsWithMissingPhases();
 
             Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} migration complete. Version {_version} -> {TLEDataVersion.Current}");
@@ -213,28 +213,28 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     var member = EntityManager.GetComponentData<TrafficGroupMember>(entity);
                     bool needsUpdate = false;
                     
-                    // Reset phase offset if out of valid range
+                    
                     if (member.m_PhaseOffset < 0 || member.m_PhaseOffset > 16)
                     {
                         member.m_PhaseOffset = 0;
                         needsUpdate = true;
                     }
                     
-                    // Reset signal delay if negative
+                    
                     if (member.m_SignalDelay < 0)
                     {
                         member.m_SignalDelay = 0;
                         needsUpdate = true;
                     }
                     
-                    // Reset invalid group index
+                    
                     if (member.m_GroupIndex < 0)
                     {
                         member.m_GroupIndex = 0;
                         needsUpdate = true;
                     }
                     
-                    // Reset negative distances
+                    
                     if (member.m_DistanceToGroupCenter < 0)
                     {
                         member.m_DistanceToGroupCenter = 0;
@@ -283,7 +283,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     {
                         var delayData = buffer[i];
                         
-                        // Remove entries with invalid edge references
+                        
                         if (delayData.m_Edge != Entity.Null && !EntityManager.Exists(delayData.m_Edge))
                         {
                             buffer.RemoveAt(i);
@@ -294,7 +294,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                         
                         bool needsUpdate = false;
                         
-                        // Clamp delay values to valid range (0-300 seconds)
+                        
                         if (delayData.m_OpenDelay < 0 || delayData.m_OpenDelay > 300)
                         {
                             delayData.m_OpenDelay = System.Math.Clamp(delayData.m_OpenDelay, 0, 300);
@@ -334,18 +334,18 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     if (leaderEntity == Entity.Null)
                         continue;
 
-                    // Check if leader has CustomPhase pattern
+                    
                     if (!EntityManager.HasComponent<CustomTrafficLights>(leaderEntity))
                         continue;
 
                     var leaderLights = EntityManager.GetComponentData<CustomTrafficLights>(leaderEntity);
                     var leaderPattern = leaderLights.GetPatternOnly();
 
-                    // Only check groups where leader uses CustomPhase
+                    
                     if (leaderPattern != CustomTrafficLights.Patterns.CustomPhase)
                         continue;
 
-                    // Check if leader has phases
+                    
                     if (!EntityManager.HasBuffer<CustomPhaseData>(leaderEntity))
                         continue;
 
@@ -353,7 +353,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     if (leaderPhases.Length == 0)
                         continue;
 
-                    // Check followers for missing phases
+                    
                     var members = trafficGroupSystem.GetGroupMembers(groupEntity);
                     bool hasAffectedFollower = false;
 
@@ -362,7 +362,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                         if (memberEntity == leaderEntity)
                             continue;
 
-                        // Check if follower has CustomPhase pattern but no phases
+                        
                         if (EntityManager.HasComponent<CustomTrafficLights>(memberEntity))
                         {
                             var memberLights = EntityManager.GetComponentData<CustomTrafficLights>(memberEntity);
@@ -395,7 +395,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
             {
                 Mod.m_Log.Warn($"Found {affectedGroups.Length} groups with {affectedFollowerCount} followers missing custom phases");
 
-                // Store affected groups for callback
+                
                 _affectedGroupsForMigration = affectedGroups.ToArray(Allocator.Persistent);
 
                 var messageDialog = new MessageDialog(
@@ -421,7 +421,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 return;
 
             var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
-            bool copyFromLeader = result == 0; // 0 = Yes/Confirm
+            bool copyFromLeader = result == 0; 
 
             Mod.m_Log.Info($"User selected {(copyFromLeader ? "copy from leader" : "reset to vanilla")} for affected followers");
 
@@ -458,20 +458,20 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
 
                     if (copyFromLeader)
                     {
-                        // Copy phases from leader
+                        
                         trafficGroupSystem.CopyPhasesToJunction(leaderEntity, memberEntity);
                         Mod.m_Log.Info($"Copied phases from leader to member {memberEntity.Index}");
                     }
                     else
                     {
-                        // Reset EdgeGroupMask so user has to reconfigure signals manually
+                        
                         if (EntityManager.HasBuffer<EdgeGroupMask>(memberEntity))
                         {
                             EntityManager.TryGetBuffer<EdgeGroupMask>(memberEntity, false, out var edgeMasks);
                             edgeMasks.Clear();
                         }
 
-                        // Reset SubLaneGroupMask as well
+                        
                         if (EntityManager.HasBuffer<SubLaneGroupMask>(memberEntity))
                         {
                             EntityManager.TryGetBuffer<SubLaneGroupMask>(memberEntity, false, out var subLaneMasks);

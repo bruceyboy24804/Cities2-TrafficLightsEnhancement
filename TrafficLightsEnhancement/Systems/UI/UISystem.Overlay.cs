@@ -5,7 +5,6 @@ using Colossal.Entities;
 using Colossal.Mathematics;
 using Game.Net;
 using Game.Rendering;
-using Game.UI;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -46,16 +45,17 @@ public partial class UISystem : ExtendedUISystemBase
                 displayIndex = m_DebugDisplayGroup - 1;
             }
 
-            DrawGizmoForEntity(ref overlayBuffer, m_SelectedEntity, displayIndex);
-            DrawNodeOutline(ref overlayBuffer, m_SelectedEntity, new Color(0f, 0.83f, 1f, 1f)); // Cyan for selected
+            bool showUncovered = m_MainPanelState == MainPanelState.CustomPhase;
+            DrawGizmoForEntity(ref overlayBuffer, m_SelectedEntity, displayIndex, showUncovered);
+            DrawNodeOutline(ref overlayBuffer, m_SelectedEntity, new Color(0f, 0.83f, 1f, 1f)); 
             
-            // Draw highlighted edge if one is selected
+            
             if (m_HighlightedEdge != Entity.Null && EntityManager.Exists(m_HighlightedEdge))
             {
                 DrawEdgeHighlight(ref overlayBuffer, m_SelectedEntity, m_HighlightedEdge, Color.magenta);
             }
 
-            // Draw other group members
+            
             if (EntityManager.HasComponent<TrafficGroupMember>(m_SelectedEntity))
             {
                 var member = EntityManager.GetComponentData<TrafficGroupMember>(m_SelectedEntity);
@@ -69,8 +69,8 @@ public partial class UISystem : ExtendedUISystemBase
                     {
                         if (memberEntity != m_SelectedEntity)
                         {
-                            // In CustomPhase editor, show each member's own current phase
-                            // In TrafficGroups view, sync to selected intersection's phase
+                            
+                            
                             int memberDisplayIndex = displayIndex;
                             if (m_MainPanelState == MainPanelState.CustomPhase)
                             {
@@ -82,7 +82,7 @@ public partial class UISystem : ExtendedUISystemBase
                             
                             DrawGizmoForEntity(ref overlayBuffer, memberEntity, memberDisplayIndex);
                             
-                            // Draw node outline: yellow for leader, white for followers
+                            
                             Color outlineColor = memberEntity == leaderEntity ? Color.yellow : Color.white;
                             DrawNodeOutline(ref overlayBuffer, memberEntity, outlineColor);
                         }
@@ -94,7 +94,7 @@ public partial class UISystem : ExtendedUISystemBase
         }
     }
 
-    private void DrawGizmoForEntity(ref OverlayRenderSystem.Buffer overlayBuffer, Entity entity, int displayIndex)
+    private void DrawGizmoForEntity(ref OverlayRenderSystem.Buffer overlayBuffer, Entity entity, int displayIndex, bool showUncovered = false)
     {
         if (EntityManager.TryGetBuffer<SubLane>(entity, true, out var subLaneBuffer))
         {
@@ -116,6 +116,13 @@ public partial class UISystem : ExtendedUISystemBase
                 }
                 if (EntityManager.TryGetComponent<LaneSignal>(subLaneEntity, out var laneSignal) && EntityManager.TryGetComponent<Curve>(subLaneEntity, out var curve))
                 {
+                    
+                    if (showUncovered && laneSignal.m_GroupMask == 0)
+                    {
+                        overlayBuffer.DrawCurve(new Color(1f, 0.5f, 0f, 1f), curve.m_Bezier, 0.5f); 
+                        continue;
+                    }
+                    
                     Color color = Color.green;
                     if (EntityManager.TryGetComponent<ExtraLaneSignal>(subLaneEntity, out var extraLaneSignal) && (extraLaneSignal.m_YieldGroupMask & 1 << displayIndex) != 0)
                     {

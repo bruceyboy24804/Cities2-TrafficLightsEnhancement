@@ -174,14 +174,13 @@ export default function SubLanePanel(props: {edge: EdgeInfo, subLane: SubLaneInf
 
   const carLaneCount = props.subLane.m_CarLaneLeftCount + props.subLane.m_CarLaneStraightCount + props.subLane.m_CarLaneRightCount + props.subLane.m_CarLaneUTurnCount;
   const trackLaneCount = props.subLane.m_TrackLaneLeftCount + props.subLane.m_TrackLaneStraightCount + props.subLane.m_TrackLaneRightCount;
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (containerRef != null && containerRef.current != null && props.position) {
-      // @ts-expect-error: cohtml specific extension
-      containerRef.current.style.leftPX = props.position.left;
-      // @ts-expect-error: cohtml specific extension
-      containerRef.current.style.topPX = props.position.top;
+      const el = containerRef.current;
+      el.style.left = `${props.position.left}px`;
+      el.style.top = `${props.position.top}px`;
     }
   }, [containerRef, props.position]);
 

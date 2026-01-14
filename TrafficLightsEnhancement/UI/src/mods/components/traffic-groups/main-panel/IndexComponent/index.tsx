@@ -28,7 +28,6 @@ import Scrollable, { ScrollableRef } from 'mods/components/common/scrollable';
 import Row from '../../../main-panel/items/row';
 import styles from './index.module.scss';
 import GroupItem from "../GroupItemComponent/group-item";
-import MainPanelRadio from "../../../main-panel/items/radio";
 import { MainPanelItemButton, MainPanelItemTitle } from "mods/general";
 import Title from "mods/components/main-panel/items/title";
 import TitleDim from "mods/components/main-panel/items/title-dim";
@@ -102,7 +101,7 @@ const CustomPhaseEditorButton = () => {
 };
 
 const BackButton = ({ previousState }: { previousState?: number }) => {
-	// If previousState is undefined, default to Empty (which allows selecting a junction)
+	
 	const targetState = previousState !== undefined ? previousState : MainPanelState.Empty;
 	const data: MainPanelItemButton = {
 		itemType: "button",
@@ -117,7 +116,7 @@ const BackButton = ({ previousState }: { previousState?: number }) => {
 	);
 };
 
-// Define hierarchy viewport type matching K45HierarchyMenu
+
 export type TrafficGroupViewport = {
 	displayName: ReactNode;
 	icon?:  string;
@@ -142,74 +141,36 @@ type PropsTrafficGroupMenu = {
 	currentTreeOnlyMode?: boolean;
 };
 
-// Pattern value for CustomPhases (matches backend CustomTrafficLights.Patterns.CustomPhase)
+
 const CUSTOM_PHASE_PATTERN = 5;
 
-// Pattern selection component using MainPanelRadio
-const MemberPatternSelector = ({ 
-	memberIndex, 
-	memberVersion, 
-	currentPattern, 
-	availablePatterns,
-	currentGroup 
-}: { 
-	memberIndex: number; 
-	memberVersion: number; 
-	currentPattern: number; 
-	availablePatterns: PatternInfo[];
-	currentGroup?: MainPanelItemTrafficGroup | undefined;
+
+const MemberPatternSelector = ({
+	memberIndex,
+	memberVersion
+}: {
+	memberIndex: number;
+	memberVersion: number;
 }) => {
-	const handlePatternChange = (patternValue: number) => {
-		// For CustomPhases, just update pattern without navigating
+	const openCustomPhaseEditor = () => {
 		callUpdateMemberPattern(JSON.stringify({
 			junctionIndex: memberIndex,
 			junctionVersion: memberVersion,
-			patternValue: patternValue
+			patternValue: CUSTOM_PHASE_PATTERN,
+			navigateToCustomPhase: true
 		}));
 	};
 
-	// Get the base pattern (lower 16 bits)
-	const basePattern = currentPattern & 0xFFFF;
-	const isCustomPhaseSelected = basePattern === CUSTOM_PHASE_PATTERN;
-
 	return (
 		<>
-			{availablePatterns
-				.filter(pattern => pattern.value !== CUSTOM_PHASE_PATTERN)
-				.map((pattern) => (
-					<Row key={pattern.value} hoverEffect={true}>
-						<MainPanelRadio
-							keyName="Pattern"
-							value={String(pattern.value)}
-							isChecked={basePattern === pattern.value}
-							label={pattern.name}
-							triggerName="CallUpdateMemberPattern"
-							onClickOverride={() => handlePatternChange(pattern.value)}
-						/>
-					</Row>
-				))}
 			<Row hoverEffect={true}>
-				<MainPanelRadio
-					keyName="Pattern"
-					value={String(CUSTOM_PHASE_PATTERN)}
-					isChecked={isCustomPhaseSelected}
-					label="Custom Phase"
-					triggerName="CallUpdateMemberPattern"
-					onClickOverride={() => handlePatternChange(CUSTOM_PHASE_PATTERN)}
-				/>
+				<Button label="Custom Phase Editor" onClick={openCustomPhaseEditor} />
 			</Row>
-			{currentGroup && currentGroup.members && (() => {
-				const currentMember = currentGroup.members.find(m => m.isCurrentJunction);
-				if (currentMember && currentMember.currentPattern !== undefined && ((currentMember.currentPattern & 0xFFFF) === CUSTOM_PHASE_PATTERN)) {
-					return <CustomPhaseEditorButton />;
-				}
-				return null;
-			})()}
 		</>
 	);
 };
 
-// Member foldout component using PanelFoldout
+
 const MemberFoldout = ({
 	member,
 	onMemberClick,
@@ -228,9 +189,7 @@ const MemberFoldout = ({
 			{member.isLeader && <span className={styles.leaderBadge}>(Leader) </span>}
 			Intersection {member.index}
 			{member.isCurrentJunction && <span className={styles.youBadge}> (You)</span>}
-			{/*{member.phases && member.phases.length > 0 && 
-				<span className={styles.phaseCount}> [{member.phases.length} phases]</span>
-			}*/}
+			{}
 		</div>
 	);
 
@@ -244,19 +203,16 @@ const MemberFoldout = ({
 			<MemberPatternSelector
 				memberIndex={member.index}
 				memberVersion={member.version}
-				currentPattern={member.currentPattern || 0}
-				availablePatterns={member.availablePatterns || []}
-				currentGroup={currentGroup}
 			/>
 		</PanelFoldout>
 	);
 };
 
 export const TrafficGroupMenu = ({ viewport, onSelect, onSetExpanded, currentTreeOnlyMode }:  PropsTrafficGroupMenu) => {
-	// Simple flat list - no filtering needed for traffic group members
+	
 	const targetViewport = viewport.map((item, idx) => ({ idx, item }));
 	
-	// Find the last non-root item for the 'last' class
+	
 	let lastNonRootIndex = -1;
 	for (let i = targetViewport.length - 1; i >= 0; i--) {
 		if (targetViewport[i].item.level > 0) {
@@ -317,9 +273,6 @@ export const TrafficGroupMenu = ({ viewport, onSelect, onSetExpanded, currentTre
 					<MemberPatternSelector 
 						memberIndex={x.item.memberIndex}
 						memberVersion={x.item.memberVersion}
-						currentPattern={x.item.currentPattern || 0}
-						availablePatterns={x.item.availablePatterns}
-						currentGroup={undefined}
 					/>
 				</div>
 			)}
@@ -375,7 +328,7 @@ const CopyPhasesToMemberButton = ({
 	const copyToAllMembers = () => {
 		if (!displayedGroup.members) return;
 		
-		// Copy phases from current junction to all other members
+		
 		displayedGroup.members.forEach(member => {
 			if (member.index !== currentJunctionIndex || member.version !== currentJunctionVersion) {
 				callCopyPhasesToJunction(JSON.stringify({
@@ -587,19 +540,19 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 	const groups = props.items.filter(item => item.itemType === "trafficGroup") as MainPanelItemTrafficGroup[];
 	const currentGroup = groups.find(g => g.isCurrentJunctionInGroup);
 	
-	// Get edge info for all group members
+	
 	const edgeInfoList = useValue(edgeInfo.binding);
 	
-	// Track which group is being viewed (for viewing groups without being a member)
+	
 	const [viewingGroupId, setViewingGroupId] = useState<{index: number, version: number} | null>(null);
 	
-	// Track which members are expanded for inline phase editing
+	
 	const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
 	
-	// Track which phase is being edited for signal states (per member)
+	
 	const [editingPhaseIndex, setEditingPhaseIndex] = useState<Record<string, number>>({});
 	
-	// The displayed group is either the one being viewed or the current junction's group
+	
 	const viewingGroup = viewingGroupId 
 		? groups.find(g => g.groupIndex === viewingGroupId.index && g.groupVersion === viewingGroupId.version)
 		: null;
@@ -623,7 +576,7 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 		}
 	}, [displayedGroup]);
 
-	// Auto-select first member and show group panel when first member is added
+	
 	useEffect(() => {
 		if (displayedGroup && 
 			displayedGroup.members && 
@@ -633,7 +586,7 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 			
 			const firstMember = displayedGroup.members[0];
 			
-			// Auto-select the first member
+			
 			const entity: Entity = { index: firstMember.index, version: firstMember.version };
 			focusEntity(entity);
 			
@@ -644,7 +597,7 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 			});
 			callSelectJunction(jsonData);
 			
-			// Auto-show the group panel
+			
 			setViewingGroupId({
 				index: displayedGroup.groupIndex,
 				version: displayedGroup.groupVersion
@@ -653,7 +606,7 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 	}, [displayedGroup?.members?.length, displayedGroup?.groupIndex, displayedGroup?.groupVersion, viewingGroupId]);
 
 	const handleViewGroup = (groupIndex: number, groupVersion: number) => {
-		// Toggle viewing - if already viewing this group, stop viewing
+		
 		if (viewingGroupId?.index === groupIndex && viewingGroupId?.version === groupVersion) {
 			setViewingGroupId(null);
 		} else {
@@ -677,14 +630,14 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 			savedScrollPosition.current = currentScroll;
 		}
 		
-		// Focus camera on the member entity
+		
 		const entity: Entity = { index: member.index, version: member.version };
 		focusEntity(entity);
 		
 		const jsonData = JSON.stringify({
 			index: member.index,
 			version: member.version,
-			stayOnTrafficGroups: true  // Flag to stay on Traffic Groups screen
+			stayOnTrafficGroups: true  
 		});
 		callSelectJunction(jsonData);
 	};

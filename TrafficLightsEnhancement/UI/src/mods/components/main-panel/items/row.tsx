@@ -32,7 +32,7 @@ export default function Row(props: RowProps) {
     }
     if (props.data && "engineEventName" in props.data && props.data.engineEventName) {
       const eventName = props.data.engineEventName;
-      // Check if this is a CS2 API trigger (format: "modId.TRIGGER:triggerName")
+      
       const triggerMatch = eventName.match(/^(.+)\.TRIGGER:(.+)$/);
       if (triggerMatch) {
         const [, modId, triggerName] = triggerMatch;

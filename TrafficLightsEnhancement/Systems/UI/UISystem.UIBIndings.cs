@@ -38,6 +38,8 @@ public partial class UISystem
 
     private GetterValueBinding<string> m_SelectMemberStateBinding;
 
+    private GetterValueBinding<string> m_UncoveredConnectionsBinding;
+
     private void AddUIBindings()
     {
         m_MainPanelBinding = CreateBinding("GetMainPanel", GetMainPanel, autoUpdate: false);
@@ -125,6 +127,162 @@ public partial class UISystem
 
         m_AddMemberStateBinding = CreateBinding("GetAddMemberState", GetAddMemberState, autoUpdate: false);
         m_SelectMemberStateBinding = CreateBinding("GetSelectMemberState", GetSelectMemberState, autoUpdate: false);
+        m_UncoveredConnectionsBinding = CreateBinding("GetUncoveredConnections", GetUncoveredConnections, autoUpdate: false);
+    }
+
+    protected string GetUncoveredConnections()
+    {
+        if (m_SelectedEntity == Entity.Null || !m_EdgeInfoDictionary.ContainsKey(m_SelectedEntity))
+        {
+            return JsonConvert.SerializeObject(new { hasUncovered = false, uncoveredCount = 0, totalLaneConnections = 0, uncoveredConnections = new object[0] });
+        }
+
+        var edgeInfoArray = m_EdgeInfoDictionary[m_SelectedEntity];
+        NativeList<NodeUtils.EdgeInfo> edgeInfoList = new(edgeInfoArray.Length, Allocator.Temp);
+        foreach (var edgeInfo in edgeInfoArray)
+        {
+            edgeInfoList.Add(edgeInfo);
+        }
+
+        var result = UncoveredConnectionsAnalyzer.FindUncoveredConnections(Allocator.Temp, edgeInfoList);
+
+        var uncoveredList = new List<object>();
+        if (result.UncoveredConnections.IsCreated)
+        {
+            foreach (var connection in result.UncoveredConnections)
+            {
+                uncoveredList.Add(new
+                {
+                    edge = new { index = connection.m_Edge.Index, version = connection.m_Edge.Version },
+                    position = new { x = connection.m_Position.x, y = connection.m_Position.y, z = connection.m_Position.z },
+                    vehicleGroup = (int)connection.m_VehicleGroup,
+                    vehicleGroupName = GetVehicleGroupName(connection.m_VehicleGroup),
+                    turnType = (int)connection.m_TurnType,
+                    turnTypeName = GetTurnTypeName(connection.m_TurnType),
+                    laneCount = connection.m_LaneCount
+                });
+            }
+        }
+
+        var response = new
+        {
+            hasUncovered = result.HasUncovered,
+            uncoveredCount = result.UncoveredCount,
+            totalLaneConnections = result.TotalLaneConnections,
+            uncoveredConnections = uncoveredList
+        };
+
+        result.Dispose();
+        edgeInfoList.Dispose();
+
+        return JsonConvert.SerializeObject(response);
+    }
+
+    private static string GetVehicleGroupName(VehicleGroup group)
+    {
+        if ((group & VehicleGroup.Car) != 0 && (group & VehicleGroup.PublicCar) == 0)
+            return "Car";
+        if ((group & VehicleGroup.PublicCar) != 0)
+            return "PublicTransport";
+        if ((group & (VehicleGroup.Tram | VehicleGroup.Train)) != 0)
+            return "Track";
+        if ((group & VehicleGroup.Bike) != 0)
+            return "Bicycle";
+        if ((group & VehicleGroup.Pedestrian) != 0)
+            return "Pedestrian";
+        return "Unknown";
+    }
+
+    private static string GetTurnTypeName(TurnType turnType)
+    {
+        return turnType switch
+        {
+            TurnType.Left => "Left",
+            TurnType.Straight => "Straight",
+            TurnType.Right => "Right",
+            TurnType.UTurn => "UTurn",
+            TurnType.GentleLeft => "GentleLeft",
+            TurnType.GentleRight => "GentleRight",
+            _ => "Unknown"
+        };
+    }
+
+    private bool IsTrafficTypeActive(Entity junctionEntity, int phaseIndex, string trafficType)
+    {
+        if (junctionEntity == Entity.Null || !EntityManager.Exists(junctionEntity))
+        {
+            return false;
+        }
+        if (phaseIndex < 0 || phaseIndex >= 16)
+        {
+            return false;
+        }
+
+        ushort phaseBit = (ushort)(1 << phaseIndex);
+
+        static bool IsSignalActive(GroupMask.Signal signal, ushort bit)
+        {
+            return (signal.m_GoGroupMask & bit) != 0 || (signal.m_YieldGroupMask & bit) != 0;
+        }
+
+        static bool IsTurnActive(GroupMask.Turn turn, ushort bit)
+        {
+            return
+                IsSignalActive(turn.m_Left, bit) ||
+                IsSignalActive(turn.m_Straight, bit) ||
+                IsSignalActive(turn.m_Right, bit) ||
+                IsSignalActive(turn.m_UTurn, bit);
+        }
+
+        if (EntityManager.HasBuffer<EdgeGroupMask>(junctionEntity))
+        {
+            var edgeMasks = EntityManager.GetBuffer<EdgeGroupMask>(junctionEntity);
+            for (int i = 0; i < edgeMasks.Length; i++)
+            {
+                var mask = edgeMasks[i];
+                switch (trafficType)
+                {
+                    case "car":
+                        if (IsTurnActive(mask.m_Car, phaseBit)) return true;
+                        break;
+                    case "publicCar":
+                        if (IsTurnActive(mask.m_PublicCar, phaseBit)) return true;
+                        break;
+                    case "track":
+                        if (IsTurnActive(mask.m_Track, phaseBit)) return true;
+                        break;
+                    case "pedestrian":
+                        if (IsSignalActive(mask.m_Pedestrian, phaseBit)) return true;
+                        break;
+                    case "bicycle":
+                        if (IsSignalActive(mask.m_Bicycle, phaseBit)) return true;
+                        break;
+                }
+            }
+        }
+
+        if (EntityManager.HasBuffer<SubLaneGroupMask>(junctionEntity))
+        {
+            var subLaneMasks = EntityManager.GetBuffer<SubLaneGroupMask>(junctionEntity);
+            for (int i = 0; i < subLaneMasks.Length; i++)
+            {
+                var mask = subLaneMasks[i];
+                switch (trafficType)
+                {
+                    case "car":
+                        if (IsTurnActive(mask.m_Car, phaseBit)) return true;
+                        break;
+                    case "track":
+                        if (IsTurnActive(mask.m_Track, phaseBit)) return true;
+                        break;
+                    case "pedestrian":
+                        if (IsSignalActive(mask.m_Pedestrian, phaseBit)) return true;
+                        break;
+                }
+            }
+        }
+
+        return false;
     }
 
     protected string GetMainPanel()
@@ -242,7 +400,7 @@ public partial class UISystem
             EntityManager.TryGetComponent(m_SelectedEntity, out TrafficLights trafficLights);
             EntityManager.TryGetComponent(m_SelectedEntity, out CustomTrafficLights customTrafficLights);
             
-            // Always add a header item with traffic light mode info (even when no phases exist)
+            
             menu.items.Add(new UITypes.ItemCustomPhaseHeader
             {
                 trafficLightMode = customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed ? 1 : 0,
@@ -346,7 +504,7 @@ public partial class UISystem
                         {
                             var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
                             
-                            // Get phase data for this member
+                            
                             var phases = new ArrayList();
                             if (EntityManager.HasBuffer<CustomPhaseData>(memberEntity))
                             {
@@ -361,7 +519,7 @@ public partial class UISystem
                                 }
                             }
                             
-                            // Get pattern data for this member
+                            
                             uint currentPattern = 0;
                             var availablePatterns = new ArrayList();
                             bool hasTrainTrack = false;
@@ -371,7 +529,7 @@ public partial class UISystem
                                 var memberTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(memberEntity);
                                 currentPattern = (uint)memberTrafficLights.GetPattern();
                                 
-                                // Check available patterns based on edge info
+                                
                                 if (m_EdgeInfoDictionary.ContainsKey(memberEntity))
                                 {
                                     var memberEdgeInfo = m_EdgeInfoDictionary[memberEntity];
@@ -425,7 +583,7 @@ public partial class UISystem
                     }
                     groupMembers.Dispose();
                     
-                    // Sort non-leader members by group index (order added) for stable ordering
+                    
                     var sortedMembers = membersList.ToArray()
                         .OrderBy(m => (int)m.GetType().GetProperty("groupIndex").GetValue(m))
                         .ToArray();
@@ -526,11 +684,20 @@ public partial class UISystem
     protected void CallMainPanelUpdatePattern(string input)
     {
         UITypes.ItemRadio pattern = JsonConvert.DeserializeObject<UITypes.ItemRadio>(input);
+		if (EntityManager.HasComponent<TrafficGroupMember>(m_SelectedEntity))
+		{
+			pattern = new UITypes.ItemRadio
+			{
+				key = pattern.key,
+				value = ((uint)CustomTrafficLights.Patterns.CustomPhase).ToString()
+			};
+		}
         m_CustomTrafficLights.SetPattern(((uint)m_CustomTrafficLights.GetPattern() & 0xFFFF0000) | uint.Parse(pattern.value));
         if (m_CustomTrafficLights.GetPatternOnly() != CustomTrafficLights.Patterns.Vanilla)
         {
             m_CustomTrafficLights.SetPattern(m_CustomTrafficLights.GetPattern() & ~CustomTrafficLights.Patterns.CentreTurnGiveWay);
         }
+        
         if (m_CustomTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase)
         {
             DynamicBuffer<CustomPhaseData> customPhaseDataBuffer;
@@ -572,7 +739,7 @@ public partial class UISystem
         }
         UpdateEntity();
         
-        // Propagate pattern to group members if this is the leader
+        
         if (EntityManager.HasComponent<TrafficGroupMember>(m_SelectedEntity))
         {
             var member = EntityManager.GetComponentData<TrafficGroupMember>(m_SelectedEntity);
@@ -886,7 +1053,7 @@ public partial class UISystem
             {
                 newValue.m_Options ^= CustomPhaseData.Options.EndPhasePrematurely;
             }
-            // Handle signal delay updates
+            
             else if (input.key == "carOpenDelay")
             {
                 newValue.m_CarOpenDelay = (short)input.value;
@@ -993,7 +1160,7 @@ public partial class UISystem
             var edgeMask = edgeGroupMaskBuffer[i];
             if (edgeMask.m_Edge.Index == input.edgeIndex && edgeMask.m_Edge.Version == input.edgeVersion)
             {
-                // Update the appropriate signal delay based on laneType and direction
+                
                 if (input.laneType == "carLane")
                 {
                     if (input.direction == "left") { edgeMask.m_Car.m_Left.m_OpenDelay = (short)input.openDelay; edgeMask.m_Car.m_Left.m_CloseDelay = (short)input.closeDelay; }
@@ -1443,85 +1610,6 @@ public partial class UISystem
         }
     }
 
-    private bool IsTrafficTypeActive(Entity entity, int phaseIndex, string trafficType)
-    {
-        if (!m_EdgeInfoDictionary.ContainsKey(entity))
-        {
-            return false;
-        }
-
-        var edgeInfos = m_EdgeInfoDictionary[entity];
-        int phaseMask = 1 << phaseIndex;
-
-        foreach (var edgeInfo in edgeInfos)
-        {
-            switch (trafficType)
-            {
-                case "car":
-                    if (edgeInfo.m_CarLaneLeftCount > 0 || edgeInfo.m_CarLaneStraightCount > 0 || edgeInfo.m_CarLaneRightCount > 0 || edgeInfo.m_CarLaneUTurnCount > 0)
-                    {
-                        if ((edgeInfo.m_EdgeGroupMask.m_Car.m_Left.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Car.m_Straight.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Car.m_Right.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Car.m_UTurn.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Car.m_Left.m_YieldGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Car.m_Straight.m_YieldGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Car.m_Right.m_YieldGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Car.m_UTurn.m_YieldGroupMask & phaseMask) != 0)
-                        {
-                            return true;
-                        }
-                    }
-                    break;
-
-                case "publicCar":
-                    if (edgeInfo.m_PublicCarLaneLeftCount > 0 || edgeInfo.m_PublicCarLaneStraightCount > 0 || edgeInfo.m_PublicCarLaneRightCount > 0 || edgeInfo.m_PublicCarLaneUTurnCount > 0)
-                    {
-                        if ((edgeInfo.m_EdgeGroupMask.m_PublicCar.m_Left.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_PublicCar.m_Straight.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_PublicCar.m_Right.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_PublicCar.m_UTurn.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_PublicCar.m_Left.m_YieldGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_PublicCar.m_Straight.m_YieldGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_PublicCar.m_Right.m_YieldGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_PublicCar.m_UTurn.m_YieldGroupMask & phaseMask) != 0)
-                        {
-                            return true;
-                        }
-                    }
-                    break;
-
-                case "track":
-                    if (edgeInfo.m_TrainTrackCount > 0)
-                    {
-                        if ((edgeInfo.m_EdgeGroupMask.m_Track.m_Left.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Track.m_Straight.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Track.m_Right.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Track.m_Left.m_YieldGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Track.m_Straight.m_YieldGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Track.m_Right.m_YieldGroupMask & phaseMask) != 0)
-                        {
-                            return true;
-                        }
-                    }
-                    break;
-
-                case "pedestrian":
-                    if (edgeInfo.m_PedestrianLaneStopLineCount > 0 || edgeInfo.m_PedestrianLaneNonStopLineCount > 0)
-                    {
-                        if ((edgeInfo.m_EdgeGroupMask.m_Pedestrian.m_GoGroupMask & phaseMask) != 0 ||
-                            (edgeInfo.m_EdgeGroupMask.m_Pedestrian.m_YieldGroupMask & phaseMask) != 0)
-                        {
-                            return true;
-                        }
-                    }
-                    break;
-            }
-        }
-
-        return false;
-    }
-
     protected void CallGetGroupMembers(string input)
     {
         var definition = new { groupIndex = 0, groupVersion = 0 };
@@ -1635,7 +1723,7 @@ public partial class UISystem
         m_IsAddingMember = false;
         m_TargetGroupForMember = Entity.Null;
         
-        // Select the first (leader) member of the group so user can work with it immediately
+        
         if (targetGroup != Entity.Null)
         {
             var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
@@ -2299,6 +2387,17 @@ public partial class UISystem
             return;
         }
         
+		if (EntityManager.HasComponent<TrafficGroupMember>(junctionEntity))
+		{
+			input = new
+			{
+				junctionIndex = input.junctionIndex,
+				junctionVersion = input.junctionVersion,
+				patternValue = (uint)CustomTrafficLights.Patterns.CustomPhase,
+				navigateToCustomPhase = input.navigateToCustomPhase
+			};
+		}
+        
         var customTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(junctionEntity);
         customTrafficLights.SetPattern(((uint)customTrafficLights.GetPattern() & 0xFFFF0000) | input.patternValue);
         
@@ -2343,19 +2442,19 @@ public partial class UISystem
         EntityManager.SetComponentData(junctionEntity, customTrafficLights);
         EntityManager.AddComponentData(junctionEntity, default(Game.Common.Updated));
         
-        // Update the cached m_CustomTrafficLights if this is the selected entity
+        
         if (junctionEntity == m_SelectedEntity)
         {
             m_CustomTrafficLights = customTrafficLights;
             UpdateEntity();
         }
         
-        // Navigate to CustomPhase editor if requested
+        
         if (input.navigateToCustomPhase && 
             (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase ||
              customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed))
         {
-            // Select the junction first if not already selected
+            
             if (junctionEntity != m_SelectedEntity)
             {
                 if (m_SelectedEntity != Entity.Null)
@@ -2400,5 +2499,366 @@ public partial class UISystem
         }
         
         RedrawGizmo();
+    }
+
+    protected void CallGenerateCustomPhasesFromPattern(string jsonString)
+    {
+        var definition = new { pattern = 0 };
+        var input = JsonConvert.DeserializeAnonymousType(jsonString, definition);
+        
+        if (m_SelectedEntity == Entity.Null || input == null)
+        {
+            return;
+        }
+
+        var pattern = (CustomTrafficLights.Patterns)input.pattern;
+        
+        
+        if (!EntityManager.HasBuffer<ConnectedEdge>(m_SelectedEntity))
+        {
+            return;
+        }
+        var connectedEdges = EntityManager.GetBuffer<ConnectedEdge>(m_SelectedEntity);
+        if (connectedEdges.Length == 0)
+        {
+            return;
+        }
+
+        
+        DynamicBuffer<CustomPhaseData> customPhaseBuffer;
+        DynamicBuffer<EdgeGroupMask> edgeGroupMaskBuffer;
+        
+        if (EntityManager.HasBuffer<CustomPhaseData>(m_SelectedEntity))
+        {
+            customPhaseBuffer = EntityManager.GetBuffer<CustomPhaseData>(m_SelectedEntity);
+            customPhaseBuffer.Clear();
+        }
+        else
+        {
+            customPhaseBuffer = EntityManager.AddBuffer<CustomPhaseData>(m_SelectedEntity);
+        }
+
+        if (EntityManager.HasBuffer<EdgeGroupMask>(m_SelectedEntity))
+        {
+            edgeGroupMaskBuffer = EntityManager.GetBuffer<EdgeGroupMask>(m_SelectedEntity);
+            edgeGroupMaskBuffer.Clear();
+        }
+        else
+        {
+            edgeGroupMaskBuffer = EntityManager.AddBuffer<EdgeGroupMask>(m_SelectedEntity);
+        }
+
+        
+        m_TypeHandle.Update(this);
+
+        
+        int phaseCount = GenerateCustomPhasesForPattern(m_SelectedEntity, pattern, connectedEdges, customPhaseBuffer, edgeGroupMaskBuffer);
+
+        if (phaseCount > 0)
+        {
+            
+            var customTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(m_SelectedEntity);
+            customTrafficLights.SetPattern(CustomTrafficLights.Patterns.CustomPhase);
+            customTrafficLights.m_Timer = 0;
+            EntityManager.SetComponentData(m_SelectedEntity, customTrafficLights);
+            m_CustomTrafficLights = customTrafficLights;
+
+            
+            EntityManager.AddComponentData(m_SelectedEntity, default(Game.Common.Updated));
+
+            
+            SetMainPanelState(MainPanelState.CustomPhase);
+        }
+
+        
+        UpdateEdgeInfo(m_SelectedEntity);
+        RedrawGizmo();
+        m_MainPanelBinding.Update();
+    }
+
+    private int GenerateCustomPhasesForPattern(Entity junctionEntity, CustomTrafficLights.Patterns pattern, DynamicBuffer<ConnectedEdge> connectedEdges, DynamicBuffer<CustomPhaseData> customPhaseBuffer, DynamicBuffer<EdgeGroupMask> edgeGroupMaskBuffer)
+    {
+        int phaseCount = 0;
+        bool leftHandTraffic = m_CityConfigurationSystem.leftHandTraffic;
+
+        
+        var nodeSubLanes = EntityManager.HasBuffer<SubLane>(junctionEntity) 
+            ? EntityManager.GetBuffer<SubLane>(junctionEntity) 
+            : default;
+
+        Unity.Collections.NativeList<ComputedLaneConnection> laneConnections = default;
+        bool useLaneConnections = false;
+
+        if (nodeSubLanes.IsCreated && nodeSubLanes.Length > 0)
+        {
+            
+            laneConnections = LaneConnectorGenerator.GenerateLaneConnections(
+                Unity.Collections.Allocator.Temp,
+                junctionEntity,
+                nodeSubLanes,
+                connectedEdges,
+                m_TypeHandle.m_SubLane,
+                m_TypeHandle.m_Edge,
+                m_TypeHandle.m_EdgeGeometry,
+                m_TypeHandle.m_Lane,
+                m_TypeHandle.m_Curve,
+                m_TypeHandle.m_CarLane,
+                m_TypeHandle.m_TrackLane,
+                m_TypeHandle.m_PedestrianLane,
+                m_TypeHandle.m_SecondaryLane,
+                m_TypeHandle.m_MasterLane,
+                m_TypeHandle.m_EdgeLane,
+                m_TypeHandle.m_SlaveLane,
+                m_TypeHandle.m_Composition,
+                m_TypeHandle.m_PrefabRef,
+                m_TypeHandle.m_NetLaneData,
+                m_TypeHandle.m_CarLaneData,
+                m_TypeHandle.m_TrackLaneData,
+                m_TypeHandle.m_NetCompositionLane,
+                m_TypeHandle.m_NetCompositionData);
+
+            useLaneConnections = laneConnections.Length > 0;
+        }
+
+        switch ((uint)pattern & 0xFFFF)
+        {
+            case (uint)CustomTrafficLights.Patterns.SplitPhasing:
+                if (useLaneConnections)
+                {
+                    var result = IntelligentPhaseGenerator.GenerateSplitPhasingWithCarriageways(
+                        Unity.Collections.Allocator.Temp,
+                        junctionEntity,
+                        laneConnections,
+                        connectedEdges,
+                        m_TypeHandle.m_Edge,
+                        m_TypeHandle.m_EdgeGeometry,
+                        leftHandTraffic);
+
+                    if (result.Success)
+                    {
+                        foreach (var phase in result.Phases)
+                            customPhaseBuffer.Add(phase);
+                        foreach (var mask in result.EdgeGroupMasks)
+                            edgeGroupMaskBuffer.Add(mask);
+                        phaseCount = result.PhaseCount;
+                        result.Phases.Dispose();
+                        result.EdgeGroupMasks.Dispose();
+                    }
+                    else
+                    {
+                        phaseCount = GenerateSplitPhasingCustomPhases(junctionEntity, connectedEdges, customPhaseBuffer, edgeGroupMaskBuffer);
+                    }
+                }
+                else
+                {
+                    phaseCount = GenerateSplitPhasingCustomPhases(junctionEntity, connectedEdges, customPhaseBuffer, edgeGroupMaskBuffer);
+                }
+                break;
+
+            case (uint)CustomTrafficLights.Patterns.ProtectedCentreTurn:
+                if (useLaneConnections)
+                {
+                    var result = IntelligentPhaseGenerator.GenerateProtectedTurnPhases(
+                        Unity.Collections.Allocator.Temp,
+                        junctionEntity,
+                        laneConnections,
+                        connectedEdges,
+                        m_TypeHandle.m_Edge,
+                        m_TypeHandle.m_EdgeGeometry,
+                        leftHandTraffic);
+
+                    if (result.Success)
+                    {
+                        foreach (var phase in result.Phases)
+                            customPhaseBuffer.Add(phase);
+                        foreach (var mask in result.EdgeGroupMasks)
+                            edgeGroupMaskBuffer.Add(mask);
+                        phaseCount = result.PhaseCount;
+                        result.Phases.Dispose();
+                        result.EdgeGroupMasks.Dispose();
+                    }
+                    else
+                    {
+                        phaseCount = GenerateProtectedTurnCustomPhases(junctionEntity, connectedEdges, customPhaseBuffer, edgeGroupMaskBuffer);
+                    }
+                }
+                else
+                {
+                    phaseCount = GenerateProtectedTurnCustomPhases(junctionEntity, connectedEdges, customPhaseBuffer, edgeGroupMaskBuffer);
+                }
+                break;
+
+            case (uint)CustomTrafficLights.Patterns.Vanilla:
+            default:
+                if (useLaneConnections)
+                {
+                    var result = IntelligentPhaseGenerator.GenerateIntelligentPhases(
+                        Unity.Collections.Allocator.Temp,
+                        junctionEntity,
+                        laneConnections,
+                        connectedEdges,
+                        m_TypeHandle.m_Edge,
+                        m_TypeHandle.m_EdgeGeometry,
+                        leftHandTraffic);
+
+                    if (result.Success)
+                    {
+                        foreach (var phase in result.Phases)
+                            customPhaseBuffer.Add(phase);
+                        foreach (var mask in result.EdgeGroupMasks)
+                            edgeGroupMaskBuffer.Add(mask);
+                        phaseCount = result.PhaseCount;
+                        result.Phases.Dispose();
+                        result.EdgeGroupMasks.Dispose();
+                    }
+                    else
+                    {
+                        phaseCount = GenerateVanillaCustomPhases(junctionEntity, connectedEdges, customPhaseBuffer, edgeGroupMaskBuffer);
+                    }
+                }
+                else
+                {
+                    phaseCount = GenerateVanillaCustomPhases(junctionEntity, connectedEdges, customPhaseBuffer, edgeGroupMaskBuffer);
+                }
+                break;
+        }
+
+        if (laneConnections.IsCreated)
+        {
+            laneConnections.Dispose();
+        }
+
+        return phaseCount;
+    }
+
+    private int GenerateSplitPhasingCustomPhases(Entity junctionEntity, DynamicBuffer<ConnectedEdge> connectedEdges, DynamicBuffer<CustomPhaseData> customPhaseBuffer, DynamicBuffer<EdgeGroupMask> edgeGroupMaskBuffer)
+    {
+        
+        
+        int phaseCount = 0;
+
+        
+        for (int i = 0; i < connectedEdges.Length && phaseCount < 16; i++)
+        {
+            Entity edgeEntity = connectedEdges[i].m_Edge;
+            
+            
+            Unity.Mathematics.float3 edgePosition = NodeUtils.GetEdgePosition(junctionEntity, edgeEntity, m_TypeHandle.m_Edge, m_TypeHandle.m_EdgeGeometry);
+
+            customPhaseBuffer.Add(new CustomPhaseData
+            {
+                m_MinimumDuration = 10,
+                m_TargetDuration = 30,
+                m_MaximumDuration = 60,
+                m_Priority = 1,
+                m_TargetDurationMultiplier = 1f
+            });
+
+            var edgeGroupMask = new EdgeGroupMask(edgeEntity, edgePosition);
+            ushort phaseBit = (ushort)(1 << phaseCount);
+            
+            
+            edgeGroupMask.m_Car.m_Left.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_Car.m_Straight.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_Car.m_Right.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_Car.m_UTurn.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_PublicCar.m_Left.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_PublicCar.m_Straight.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_PublicCar.m_Right.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_PublicCar.m_UTurn.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_Track.m_Left.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_Track.m_Straight.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_Track.m_Right.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_Pedestrian.m_GoGroupMask = phaseBit;
+
+            edgeGroupMaskBuffer.Add(edgeGroupMask);
+            phaseCount++;
+        }
+
+        return phaseCount;
+    }
+
+    private int GenerateProtectedTurnCustomPhases(Entity junctionEntity, DynamicBuffer<ConnectedEdge> connectedEdges, DynamicBuffer<CustomPhaseData> customPhaseBuffer, DynamicBuffer<EdgeGroupMask> edgeGroupMaskBuffer)
+    {
+        if (connectedEdges.Length != 4)
+        {
+            return GenerateVanillaCustomPhases(junctionEntity, connectedEdges, customPhaseBuffer, edgeGroupMaskBuffer);
+        }
+
+        bool leftHandTraffic = m_CityConfigurationSystem.leftHandTraffic;
+
+        customPhaseBuffer.Add(new CustomPhaseData { m_MinimumDuration = 10, m_TargetDuration = 30, m_MaximumDuration = 60, m_Priority = 1, m_TargetDurationMultiplier = 1f });
+        customPhaseBuffer.Add(new CustomPhaseData { m_MinimumDuration = 8, m_TargetDuration = 15, m_MaximumDuration = 30, m_Priority = 1, m_TargetDurationMultiplier = 1f });
+        customPhaseBuffer.Add(new CustomPhaseData { m_MinimumDuration = 10, m_TargetDuration = 30, m_MaximumDuration = 60, m_Priority = 1, m_TargetDurationMultiplier = 1f });
+        customPhaseBuffer.Add(new CustomPhaseData { m_MinimumDuration = 8, m_TargetDuration = 15, m_MaximumDuration = 30, m_Priority = 1, m_TargetDurationMultiplier = 1f });
+
+        for (int i = 0; i < connectedEdges.Length && i < 4; i++)
+        {
+            Entity edgeEntity = connectedEdges[i].m_Edge;
+            Unity.Mathematics.float3 edgePosition = NodeUtils.GetEdgePosition(junctionEntity, edgeEntity, m_TypeHandle.m_Edge, m_TypeHandle.m_EdgeGeometry);
+            var edgeGroupMask = new EdgeGroupMask(edgeEntity, edgePosition);
+
+            bool isNorthSouth = (i == 0 || i == 2);
+            ushort straightPhase = isNorthSouth ? (ushort)1 : (ushort)4;
+            ushort turnPhase = isNorthSouth ? (ushort)2 : (ushort)8;
+
+            edgeGroupMask.m_Car.m_Straight.m_GoGroupMask = straightPhase;
+            edgeGroupMask.m_PublicCar.m_Straight.m_GoGroupMask = straightPhase;
+            
+            if (leftHandTraffic)
+            {
+                edgeGroupMask.m_Car.m_Left.m_GoGroupMask = straightPhase;
+                edgeGroupMask.m_PublicCar.m_Left.m_GoGroupMask = straightPhase;
+                edgeGroupMask.m_Car.m_Right.m_GoGroupMask = turnPhase;
+                edgeGroupMask.m_PublicCar.m_Right.m_GoGroupMask = turnPhase;
+            }
+            else
+            {
+                edgeGroupMask.m_Car.m_Right.m_GoGroupMask = straightPhase;
+                edgeGroupMask.m_PublicCar.m_Right.m_GoGroupMask = straightPhase;
+                edgeGroupMask.m_Car.m_Left.m_GoGroupMask = turnPhase;
+                edgeGroupMask.m_PublicCar.m_Left.m_GoGroupMask = turnPhase;
+            }
+
+            edgeGroupMask.m_Pedestrian.m_GoGroupMask = straightPhase;
+            edgeGroupMaskBuffer.Add(edgeGroupMask);
+        }
+
+        return 4;
+    }
+
+    private int GenerateVanillaCustomPhases(Entity junctionEntity, DynamicBuffer<ConnectedEdge> connectedEdges, DynamicBuffer<CustomPhaseData> customPhaseBuffer, DynamicBuffer<EdgeGroupMask> edgeGroupMaskBuffer)
+    {
+        if (connectedEdges.Length < 2)
+        {
+            return 0;
+        }
+
+        customPhaseBuffer.Add(new CustomPhaseData { m_MinimumDuration = 10, m_TargetDuration = 30, m_MaximumDuration = 60, m_Priority = 1, m_TargetDurationMultiplier = 1f });
+        customPhaseBuffer.Add(new CustomPhaseData { m_MinimumDuration = 10, m_TargetDuration = 30, m_MaximumDuration = 60, m_Priority = 1, m_TargetDurationMultiplier = 1f });
+
+        for (int i = 0; i < connectedEdges.Length; i++)
+        {
+            Entity edgeEntity = connectedEdges[i].m_Edge;
+            Unity.Mathematics.float3 edgePosition = NodeUtils.GetEdgePosition(junctionEntity, edgeEntity, m_TypeHandle.m_Edge, m_TypeHandle.m_EdgeGeometry);
+            var edgeGroupMask = new EdgeGroupMask(edgeEntity, edgePosition);
+
+            ushort phaseBit = (i % 2 == 0) ? (ushort)1 : (ushort)2;
+
+            edgeGroupMask.m_Car.m_Straight.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_Car.m_Right.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_PublicCar.m_Straight.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_PublicCar.m_Right.m_GoGroupMask = phaseBit;
+            
+            edgeGroupMask.m_Car.m_Left.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_Car.m_Left.m_YieldGroupMask = phaseBit;
+            edgeGroupMask.m_PublicCar.m_Left.m_GoGroupMask = phaseBit;
+            edgeGroupMask.m_PublicCar.m_Left.m_YieldGroupMask = phaseBit;
+
+            edgeGroupMask.m_Pedestrian.m_GoGroupMask = phaseBit;
+            edgeGroupMaskBuffer.Add(edgeGroupMask);
+        }
+
+        return 2;
     }
 }

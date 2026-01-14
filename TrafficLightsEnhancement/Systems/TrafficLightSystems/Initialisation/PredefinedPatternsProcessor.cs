@@ -78,7 +78,7 @@ public class PredefinedPatternsProcessor
             job.m_LaneSignalData[subLane] = laneSignal;
         }
 
-        // Set up car lanes
+        
         for (int i = 0; i < connectedEdges.Length; i++)
         {
             Entity edge = connectedEdges[i].m_Edge;
@@ -108,7 +108,7 @@ public class PredefinedPatternsProcessor
             }
         }
 
-        // Set up track lanes
+        
         for (int i = 0; i < connectedEdges.Length; i++)
         {
             Entity edge = connectedEdges[i].m_Edge;
@@ -462,7 +462,7 @@ public class PredefinedPatternsProcessor
                 if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal) || !job.m_ExtraTypeHandle.m_TrackLane.HasComponent(subLane)) continue;
                 if (job.m_CarLaneData.HasComponent(trackConn.m_SourceSubLane)) continue;
                 
-                // Add track lanes to all phases
+                
                 laneSignal.m_GroupMask |= (ushort)((1 << groupCount) - 1);
                 job.m_LaneSignalData[subLane] = laneSignal;
             }

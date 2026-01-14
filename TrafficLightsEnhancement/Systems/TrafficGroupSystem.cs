@@ -1,6 +1,7 @@
 using C2VM.TrafficLightsEnhancement.Components;
 using Colossal.Logging;
 using Game;
+using Game.Common;
 using Game.Net;
 using Game.Simulation;
 using Game.UI.Localization;
@@ -115,6 +116,30 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 		var member = new TrafficGroupMember(groupEntity, leaderEntity, memberCount, 0f, 0f, 0, 0, isLeader);
 		EntityManager.AddComponentData(junctionEntity, member);
+		if (EntityManager.HasComponent<CustomTrafficLights>(junctionEntity))
+		{
+			var customTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(junctionEntity);
+			customTrafficLights.SetPatternOnly(CustomTrafficLights.Patterns.CustomPhase);
+			customTrafficLights.m_Timer = 0;
+			EntityManager.SetComponentData(junctionEntity, customTrafficLights);
+		}
+		else
+		{
+			EntityManager.AddComponentData(junctionEntity, new CustomTrafficLights(CustomTrafficLights.Patterns.CustomPhase));
+		}
+		if (!EntityManager.HasBuffer<CustomPhaseData>(junctionEntity))
+		{
+			EntityManager.AddComponent<CustomPhaseData>(junctionEntity);
+		}
+		if (!EntityManager.HasBuffer<EdgeGroupMask>(junctionEntity))
+		{
+			EntityManager.AddComponent<EdgeGroupMask>(junctionEntity);
+		}
+		if (!EntityManager.HasBuffer<SubLaneGroupMask>(junctionEntity))
+		{
+			EntityManager.AddComponent<SubLaneGroupMask>(junctionEntity);
+		}
+		EntityManager.AddComponentData(junctionEntity, default(Updated));
 		if (isLeader)
 		{
 			UpdateAllMembersLeader(groupEntity, junctionEntity);
@@ -529,7 +554,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		var group = EntityManager.GetComponentData<TrafficGroup>(groupEntity);
 		var members = GetGroupMembers(groupEntity);
 
-		// Find the leader
+		
 		Entity leaderEntity = Entity.Null;
 		float3 leaderPosition = float3.zero;
 		
@@ -602,7 +627,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			group.m_LastSyncTime = 0f;
 			group.m_CycleTimer = 0f;
 			
-			// Immediately sync all members to the leader's current phase
+			
 			Entity leaderEntity = GetGroupLeader(groupEntity);
 			if (leaderEntity != Entity.Null && EntityManager.HasComponent<TrafficLights>(leaderEntity))
 			{
@@ -651,7 +676,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 				continue;
 			}
 
-			// Calculate expected phase based on leader + offset
+			
 			int expectedPhase = leaderLights.m_CurrentSignalGroup + memberData.m_PhaseOffset;
 			int phaseCount = trafficLights.m_SignalGroupCount;
 			if (phaseCount > 0)
@@ -731,13 +756,9 @@ public partial class TrafficGroupSystem : GameSystemBase
 			}
 		}
 
-		// For non-leaders, check compatibility
+		
 		float cycleDifference = math.abs(group.m_CycleLength - junctionCycleLength);
-		/*if (cycleDifference > 2f) // Allow 2 tick tolerance
-		{
-			var messageDialog = new MessageDialog($"Junction {junctionEntity} has cycle length {junctionCycleLength} but group expects {group.m_CycleLength}. ");
-			GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
-		}*/
+		
 	}
 
 	
@@ -777,11 +798,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			if (memberCycleLength > 0)
 			{
 				float cycleDifference = math.abs(leaderCycleLength - memberCycleLength);
-				/*if (cycleDifference > 2f)
-				{
-					var messageDialog = new MessageDialog($"TrafficGroupSystem: Member {memberEntity} cycle length ({memberCycleLength}) differs from leader ({leaderCycleLength})");
-					GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
-				}*/
+				
 			}
 		}
 		members.Dispose();
@@ -855,7 +872,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		{
 			if (memberEntity == leaderEntity)
 			{
-				// Leader has 0 offset
+				
 				var leaderMember = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
 				leaderMember.m_PhaseOffset = 0;
 				leaderMember.m_SignalDelay = 0;
@@ -1204,7 +1221,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 	{
 		errorMessage = "";
 
-		// Get source pattern
+		
 		CustomTrafficLights.Patterns sourcePattern = CustomTrafficLights.Patterns.Vanilla;
 		bool sourceHasCustomLights = EntityManager.HasComponent<CustomTrafficLights>(sourceJunction);
 		if (sourceHasCustomLights)
@@ -1213,7 +1230,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			sourcePattern = sourceLights.GetPatternOnly();
 		}
 
-		// Get target pattern
+		
 		CustomTrafficLights.Patterns targetPattern = CustomTrafficLights.Patterns.Vanilla;
 		bool targetHasCustomLights = EntityManager.HasComponent<CustomTrafficLights>(targetJunction);
 		if (targetHasCustomLights)
@@ -1222,7 +1239,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			targetPattern = targetLights.GetPatternOnly();
 		}
 
-		// For CustomPhase pattern - both must have CustomPhase
+		
 		if (sourcePattern == CustomTrafficLights.Patterns.CustomPhase)
 		{
 			if (targetPattern != CustomTrafficLights.Patterns.CustomPhase)
@@ -1232,7 +1249,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 				return false;
 			}
 
-			// Also verify both have phase data
+			
 			bool sourceHasPhases = EntityManager.HasBuffer<CustomPhaseData>(sourceJunction) && 
 				EntityManager.GetBuffer<CustomPhaseData>(sourceJunction).Length > 0;
 			bool targetHasPhases = EntityManager.HasBuffer<CustomPhaseData>(targetJunction) && 
@@ -1245,7 +1262,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			}
 		}
 
-		// For predefined patterns - target must also have a predefined pattern (not Vanilla)
+		
 		if (sourcePattern != CustomTrafficLights.Patterns.CustomPhase && 
 			sourcePattern != CustomTrafficLights.Patterns.Vanilla)
 		{
@@ -1285,7 +1302,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			return false;
 		}
 
-		// Validate pattern compatibility before copying
+		
 		if (!ValidatePhaseSyncCompatibility(sourceJunction, targetJunction, out string errorMessage))
 		{
 			var messageDialog = new MessageDialog(
@@ -1296,7 +1313,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			return false;
 		}
 
-		// Always copy the pattern first (works for both predefined and custom patterns)
+		
 		if (EntityManager.HasComponent<CustomTrafficLights>(sourceJunction))
 		{
 			var sourceLights = EntityManager.GetComponentData<CustomTrafficLights>(sourceJunction);
@@ -1314,13 +1331,13 @@ public partial class TrafficGroupSystem : GameSystemBase
 			}
 		}
 
-		// Copy CustomPhaseData if source has it (for custom/fixed-timed patterns)
+		
 		if (EntityManager.HasBuffer<CustomPhaseData>(sourceJunction))
 		{
 			EntityManager.TryGetBuffer<CustomPhaseData>(sourceJunction, false, out var sourcePhases);
 			if (sourcePhases.Length > 0)
 			{
-				// Ensure target has a phase buffer
+				
 				if (!EntityManager.HasBuffer<CustomPhaseData>(targetJunction))
 				{
 					EntityManager.AddBuffer<CustomPhaseData>(targetJunction);
@@ -1353,132 +1370,9 @@ public partial class TrafficGroupSystem : GameSystemBase
 			}
 		}
 
-		
-		if (EntityManager.HasBuffer<EdgeGroupMask>(sourceJunction) && 
-		    EntityManager.HasBuffer<ConnectedEdge>(sourceJunction) &&
-		    EntityManager.HasBuffer<ConnectedEdge>(targetJunction))
-		{
-			EntityManager.TryGetBuffer<EdgeGroupMask>(sourceJunction, false, out var sourceSignals);
-			EntityManager.TryGetBuffer<ConnectedEdge>(sourceJunction, false, out var sourceConnectedEdges);
-			EntityManager.TryGetBuffer<ConnectedEdge>(targetJunction, false, out var targetConnectedEdges);
-			
-			// Check if edge counts match - required for 1:1 position mapping
-			if (sourceConnectedEdges.Length != targetConnectedEdges.Length)
-			{
-				m_Log.Warn($"TrafficGroupSystem: Edge count mismatch - source has {sourceConnectedEdges.Length}, target has {targetConnectedEdges.Length}. Skipping signal copy.");
-			}
-			else
-			{
-				if (!EntityManager.HasBuffer<EdgeGroupMask>(targetJunction))
-				{
-					EntityManager.AddBuffer<EdgeGroupMask>(targetJunction);
-				}
-				
-				EntityManager.TryGetBuffer<EdgeGroupMask>(targetJunction, false, out var targetSignals);
-				targetSignals.Clear();
-				
-				var edgeLookup = GetComponentLookup<Edge>(true);
-				var edgeGeometryLookup = GetComponentLookup<EdgeGeometry>(true);
-				
-				var sourceEdgePositions = new NativeList<(Entity edge, float angle, int originalIndex)>(sourceConnectedEdges.Length, Allocator.Temp);
-				var targetEdgePositions = new NativeList<(Entity edge, float angle, int originalIndex)>(targetConnectedEdges.Length, Allocator.Temp);
-				
-				float3 sourceCenter = float3.zero;
-				for (int i = 0; i < sourceConnectedEdges.Length; i++)
-				{
-					var edgePos = GetEdgePositionForJunction(sourceJunction, sourceConnectedEdges[i].m_Edge, edgeLookup, edgeGeometryLookup);
-					sourceCenter += edgePos;
-				}
-				sourceCenter /= sourceConnectedEdges.Length;
-				
-				float3 targetCenter = float3.zero;
-				for (int i = 0; i < targetConnectedEdges.Length; i++)
-				{
-					var edgePos = GetEdgePositionForJunction(targetJunction, targetConnectedEdges[i].m_Edge, edgeLookup, edgeGeometryLookup);
-					targetCenter += edgePos;
-				}
-				targetCenter /= targetConnectedEdges.Length;
-				
-				for (int i = 0; i < sourceConnectedEdges.Length; i++)
-				{
-					var edgePos = GetEdgePositionForJunction(sourceJunction, sourceConnectedEdges[i].m_Edge, edgeLookup, edgeGeometryLookup);
-					float angle = math.atan2(edgePos.z - sourceCenter.z, edgePos.x - sourceCenter.x);
-					sourceEdgePositions.Add((sourceConnectedEdges[i].m_Edge, angle, i));
-				}
-				
-				for (int i = 0; i < targetConnectedEdges.Length; i++)
-				{
-					var edgePos = GetEdgePositionForJunction(targetJunction, targetConnectedEdges[i].m_Edge, edgeLookup, edgeGeometryLookup);
-					float angle = math.atan2(edgePos.z - targetCenter.z, edgePos.x - targetCenter.x);
-					targetEdgePositions.Add((targetConnectedEdges[i].m_Edge, angle, i));
-				}
-				
-				sourceEdgePositions.Sort(new AngleComparer());
-				targetEdgePositions.Sort(new AngleComparer());
-				
-				var sourceEdgeToSignal = new NativeHashMap<Entity, EdgeGroupMask>(sourceSignals.Length, Allocator.Temp);
-				for (int i = 0; i < sourceSignals.Length; i++)
-				{
-					sourceEdgeToSignal[sourceSignals[i].m_Edge] = sourceSignals[i];
-				}
-				
-				int copiedCount = 0;
-				
-				for (int i = 0; i < sourceEdgePositions.Length && i < targetEdgePositions.Length; i++)
-				{
-					var sourceEdge = sourceEdgePositions[i].edge;
-					var targetEdge = targetEdgePositions[i].edge;
-					float sourceAngle = sourceEdgePositions[i].angle;
-					float targetAngle = targetEdgePositions[i].angle;
-					
-					
-					if (sourceEdgeToSignal.TryGetValue(sourceEdge, out var sourceSignal))
-					{
-						var targetEdgePos = GetEdgePositionForJunction(targetJunction, targetEdge, edgeLookup, edgeGeometryLookup);
-						var newSignal = new EdgeGroupMask(targetEdge, targetEdgePos, sourceSignal);
-						targetSignals.Add(newSignal);
-						copiedCount++;
-					}
-					else
-					{
-						m_Log.Warn($"TrafficGroupSystem: No signal found for source edge {sourceEdge}");
-					}
-				}
-				sourceEdgePositions.Dispose();
-				targetEdgePositions.Dispose();
-				sourceEdgeToSignal.Dispose();
-			}
-		}
-
-		if (EntityManager.HasBuffer<SubLaneGroupMask>(sourceJunction))
-		{
-			EntityManager.TryGetBuffer<SubLaneGroupMask>(sourceJunction, false, out var sourceSubLaneSignals);
-			
-			if (!EntityManager.HasBuffer<SubLaneGroupMask>(targetJunction))
-			{
-				EntityManager.AddBuffer<SubLaneGroupMask>(targetJunction);
-			}
-			
-			EntityManager.TryGetBuffer<SubLaneGroupMask>(targetJunction, false, out var targetSubLaneSignals);
-			
-			
-			if (sourceSubLaneSignals.Length == targetSubLaneSignals.Length)
-			{
-				for (int i = 0; i < sourceSubLaneSignals.Length; i++)
-				{
-					var sourceSignal = sourceSubLaneSignals[i];
-					var targetSignal = targetSubLaneSignals[i];
-					
-					var newSignal = new SubLaneGroupMask(targetSignal.m_SubLane, (float3)targetSignal.m_Position, sourceSignal);
-					targetSubLaneSignals[i] = newSignal;
-				}
-			}
-			else
-			{
-				m_Log.Warn($"TrafficGroupSystem: SubLane count mismatch - source has {sourceSubLaneSignals.Length}, target has {targetSubLaneSignals.Length}. Skipping sublane signal copy.");
-			}
-		}
-
+		CopyEdgeGroupMaskWithDirectionMatching(sourceJunction, targetJunction);
+		CopySubLaneGroupMaskWithLaneTypeMatching(sourceJunction, targetJunction);
+		EntityManager.AddComponentData(targetJunction, default(Updated));
 		return true;
 	}
 
@@ -1566,11 +1460,579 @@ public partial class TrafficGroupSystem : GameSystemBase
 				memberLights.m_Timer = 0;
 				EntityManager.SetComponentData(memberEntity, memberLights);
 			}
+
+			
+			CopyEdgeGroupMaskWithDirectionMatching(leaderEntity, memberEntity);
+			
+			
+			CopySubLaneGroupMaskWithLaneTypeMatching(leaderEntity, memberEntity);
 		}
 
 		int memberCount = members.Length;
 		members.Dispose();
-		m_Log.Info($"Propagated pattern {pattern} to {memberCount - 1} group members");
+		m_Log.Info($"Propagated pattern {pattern} to {memberCount - 1} group members with full lane matching");
+	}
+
+	private void CopyEdgeGroupMaskWithDirectionMatching(Entity sourceJunction, Entity targetJunction)
+	{
+		if (!EntityManager.HasBuffer<EdgeGroupMask>(sourceJunction) ||
+		    !EntityManager.HasBuffer<ConnectedEdge>(sourceJunction) ||
+		    !EntityManager.HasBuffer<ConnectedEdge>(targetJunction))
+		{
+			return;
+		}
+
+		EntityManager.TryGetBuffer<EdgeGroupMask>(sourceJunction, false, out var sourceSignals);
+		EntityManager.TryGetBuffer<ConnectedEdge>(sourceJunction, false, out var sourceConnectedEdges);
+		EntityManager.TryGetBuffer<ConnectedEdge>(targetJunction, false, out var targetConnectedEdges);
+
+		if (sourceSignals.Length == 0)
+		{
+			return;
+		}
+
+		if (!EntityManager.HasBuffer<EdgeGroupMask>(targetJunction))
+		{
+			EntityManager.AddBuffer<EdgeGroupMask>(targetJunction);
+		}
+
+		EntityManager.TryGetBuffer<EdgeGroupMask>(targetJunction, false, out var targetSignals);
+		targetSignals.Clear();
+
+		var edgeLookup = GetComponentLookup<Edge>(true);
+		var edgeGeometryLookup = GetComponentLookup<EdgeGeometry>(true);
+		var connectedEdgeLookup = GetBufferLookup<ConnectedEdge>(true);
+
+		
+		var sourceEdgeToSignal = new NativeHashMap<Entity, EdgeGroupMask>(sourceSignals.Length, Allocator.Temp);
+		for (int i = 0; i < sourceSignals.Length; i++)
+		{
+			sourceEdgeToSignal[sourceSignals[i].m_Edge] = sourceSignals[i];
+		}
+
+		
+		var matchedTargetEdges = new NativeHashSet<Entity>(targetConnectedEdges.Length, Allocator.Temp);
+
+		
+		for (int t = 0; t < targetConnectedEdges.Length; t++)
+		{
+			var targetEdge = targetConnectedEdges[t].m_Edge;
+			
+			
+			Entity matchedSourceEdge = TryFindConnectedSourceEdge(
+				targetJunction, targetEdge, sourceJunction, 
+				edgeLookup, connectedEdgeLookup, 10); 
+			
+			if (matchedSourceEdge != Entity.Null && sourceEdgeToSignal.TryGetValue(matchedSourceEdge, out var sourceSignal))
+			{
+				var targetEdgePos = GetEdgePositionForJunction(targetJunction, targetEdge, edgeLookup, edgeGeometryLookup);
+				var newSignal = new EdgeGroupMask(targetEdge, targetEdgePos, sourceSignal);
+				targetSignals.Add(newSignal);
+				matchedTargetEdges.Add(targetEdge);
+			}
+		}
+
+		
+		float3 sourceCenter = float3.zero;
+		for (int i = 0; i < sourceConnectedEdges.Length; i++)
+		{
+			var edgePos = GetEdgePositionForJunction(sourceJunction, sourceConnectedEdges[i].m_Edge, edgeLookup, edgeGeometryLookup);
+			sourceCenter += edgePos;
+		}
+		sourceCenter /= sourceConnectedEdges.Length;
+
+		float3 targetCenter = float3.zero;
+		for (int i = 0; i < targetConnectedEdges.Length; i++)
+		{
+			var edgePos = GetEdgePositionForJunction(targetJunction, targetConnectedEdges[i].m_Edge, edgeLookup, edgeGeometryLookup);
+			targetCenter += edgePos;
+		}
+		targetCenter /= targetConnectedEdges.Length;
+
+		
+		var sourceEdgeData = new NativeList<(Entity edge, float angle, EdgeGroupMask signal)>(sourceConnectedEdges.Length, Allocator.Temp);
+		for (int i = 0; i < sourceConnectedEdges.Length; i++)
+		{
+			var edgeEntity = sourceConnectedEdges[i].m_Edge;
+			var edgePos = GetEdgePositionForJunction(sourceJunction, edgeEntity, edgeLookup, edgeGeometryLookup);
+			float angle = math.atan2(edgePos.z - sourceCenter.z, edgePos.x - sourceCenter.x);
+			if (sourceEdgeToSignal.TryGetValue(edgeEntity, out var signal))
+			{
+				sourceEdgeData.Add((edgeEntity, angle, signal));
+			}
+		}
+
+		
+		for (int t = 0; t < targetConnectedEdges.Length; t++)
+		{
+			var targetEdge = targetConnectedEdges[t].m_Edge;
+			
+			
+			if (matchedTargetEdges.Contains(targetEdge))
+			{
+				continue;
+			}
+
+			var targetEdgePos = GetEdgePositionForJunction(targetJunction, targetEdge, edgeLookup, edgeGeometryLookup);
+			float targetAngle = math.atan2(targetEdgePos.z - targetCenter.z, targetEdgePos.x - targetCenter.x);
+
+			
+			float bestAngleDiff = float.MaxValue;
+			int bestSourceIndex = -1;
+
+			for (int s = 0; s < sourceEdgeData.Length; s++)
+			{
+				float angleDiff = math.abs(AngleDifference(targetAngle, sourceEdgeData[s].angle));
+				if (angleDiff < bestAngleDiff)
+				{
+					bestAngleDiff = angleDiff;
+					bestSourceIndex = s;
+				}
+			}
+
+			if (bestSourceIndex >= 0 && bestAngleDiff < math.PI / 4) 
+			{
+				var sourceSignal = sourceEdgeData[bestSourceIndex].signal;
+				var newSignal = new EdgeGroupMask(targetEdge, targetEdgePos, sourceSignal);
+				targetSignals.Add(newSignal);
+			}
+		}
+
+		sourceEdgeData.Dispose();
+		sourceEdgeToSignal.Dispose();
+		matchedTargetEdges.Dispose();
+	}
+
+	private Entity TryFindConnectedSourceEdge(
+		Entity startNode, Entity startEdge, Entity targetNode,
+		ComponentLookup<Edge> edgeLookup, BufferLookup<ConnectedEdge> connectedEdgeLookup,
+		int maxHops)
+	{
+		if (!edgeLookup.HasComponent(startEdge))
+		{
+			return Entity.Null;
+		}
+
+		
+		var edge = edgeLookup[startEdge];
+		Entity currentNode = edge.m_Start == startNode ? edge.m_End : edge.m_Start;
+		Entity previousEdge = startEdge;
+
+		
+		float3 startDirection = GetEdgeDirection(startNode, startEdge, edgeLookup);
+
+		for (int hop = 0; hop < maxHops; hop++)
+		{
+			
+			if (currentNode == targetNode)
+			{
+				
+				return previousEdge;
+			}
+
+			
+			if (!connectedEdgeLookup.HasBuffer(currentNode))
+			{
+				break;
+			}
+
+			var connectedEdges = connectedEdgeLookup[currentNode];
+			
+			
+			if (connectedEdges.Length == 2)
+			{
+				
+				Entity nextEdge = Entity.Null;
+				for (int i = 0; i < connectedEdges.Length; i++)
+				{
+					if (connectedEdges[i].m_Edge != previousEdge)
+					{
+						nextEdge = connectedEdges[i].m_Edge;
+						break;
+					}
+				}
+
+				if (nextEdge == Entity.Null || !edgeLookup.HasComponent(nextEdge))
+				{
+					break;
+				}
+
+				
+				var nextEdgeData = edgeLookup[nextEdge];
+				Entity nextNode = nextEdgeData.m_Start == currentNode ? nextEdgeData.m_End : nextEdgeData.m_Start;
+				
+				previousEdge = nextEdge;
+				currentNode = nextNode;
+			}
+			else
+			{
+				
+				Entity bestEdge = Entity.Null;
+				float bestAlignment = -2f; 
+
+				float3 incomingDir = GetEdgeDirection(currentNode, previousEdge, edgeLookup);
+				
+				incomingDir = -incomingDir;
+
+				for (int i = 0; i < connectedEdges.Length; i++)
+				{
+					var candidateEdge = connectedEdges[i].m_Edge;
+					if (candidateEdge == previousEdge)
+					{
+						continue;
+					}
+
+					float3 candidateDir = GetEdgeDirection(currentNode, candidateEdge, edgeLookup);
+					float alignment = math.dot(math.normalize(incomingDir.xz), math.normalize(candidateDir.xz));
+
+					
+					if (edgeLookup.HasComponent(candidateEdge))
+					{
+						var candidateEdgeData = edgeLookup[candidateEdge];
+						Entity otherEnd = candidateEdgeData.m_Start == currentNode ? candidateEdgeData.m_End : candidateEdgeData.m_Start;
+						
+						if (otherEnd == targetNode)
+						{
+							
+							return candidateEdge;
+						}
+					}
+
+					
+					if (alignment > bestAlignment && alignment > 0.5f)
+					{
+						bestAlignment = alignment;
+						bestEdge = candidateEdge;
+					}
+				}
+
+				if (bestEdge == Entity.Null || !edgeLookup.HasComponent(bestEdge))
+				{
+					break;
+				}
+
+				var bestEdgeData = edgeLookup[bestEdge];
+				Entity nextNode = bestEdgeData.m_Start == currentNode ? bestEdgeData.m_End : bestEdgeData.m_Start;
+				
+				previousEdge = bestEdge;
+				currentNode = nextNode;
+			}
+		}
+
+		return Entity.Null;
+	}
+
+	private float3 GetEdgeDirection(Entity node, Entity edgeEntity, ComponentLookup<Edge> edgeLookup)
+	{
+		if (!edgeLookup.HasComponent(edgeEntity))
+		{
+			return float3.zero;
+		}
+
+		var edge = edgeLookup[edgeEntity];
+		var edgeGeometryLookup = GetComponentLookup<EdgeGeometry>(true);
+		
+		if (!edgeGeometryLookup.HasComponent(edgeEntity))
+		{
+			return float3.zero;
+		}
+
+		var geometry = edgeGeometryLookup[edgeEntity];
+		
+		
+		if (edge.m_Start == node)
+		{
+			
+			float3 start = (geometry.m_Start.m_Left.a + geometry.m_Start.m_Right.a) / 2;
+			float3 end = (geometry.m_End.m_Left.d + geometry.m_End.m_Right.d) / 2;
+			return math.normalize(end - start);
+		}
+		else
+		{
+			
+			float3 start = (geometry.m_Start.m_Left.a + geometry.m_Start.m_Right.a) / 2;
+			float3 end = (geometry.m_End.m_Left.d + geometry.m_End.m_Right.d) / 2;
+			return math.normalize(start - end);
+		}
+	}
+
+	private float AngleDifference(float a, float b)
+	{
+		float diff = a - b;
+		while (diff > math.PI) diff -= 2 * math.PI;
+		while (diff < -math.PI) diff += 2 * math.PI;
+		return diff;
+	}
+
+	private void CopySubLaneGroupMaskWithLaneTypeMatching(Entity sourceJunction, Entity targetJunction)
+	{
+		if (!EntityManager.HasBuffer<SubLaneGroupMask>(sourceJunction) ||
+		    !EntityManager.HasBuffer<ConnectedEdge>(sourceJunction) ||
+		    !EntityManager.HasBuffer<ConnectedEdge>(targetJunction) ||
+		    !EntityManager.HasBuffer<SubLane>(sourceJunction) ||
+		    !EntityManager.HasBuffer<SubLane>(targetJunction))
+		{
+			return;
+		}
+
+		EntityManager.TryGetBuffer<SubLaneGroupMask>(sourceJunction, false, out var sourceSubLaneMasks);
+		if (sourceSubLaneMasks.Length == 0)
+		{
+			return;
+		}
+
+		if (!EntityManager.HasBuffer<SubLaneGroupMask>(targetJunction))
+		{
+			EntityManager.AddBuffer<SubLaneGroupMask>(targetJunction);
+		}
+
+		EntityManager.TryGetBuffer<SubLaneGroupMask>(targetJunction, false, out var targetSubLaneMasks);
+		EntityManager.TryGetBuffer<SubLane>(sourceJunction, false, out var sourceSubLanes);
+		EntityManager.TryGetBuffer<SubLane>(targetJunction, false, out var targetSubLanes);
+
+		var edgeLookup = GetComponentLookup<Edge>(true);
+		var edgeGeometryLookup = GetComponentLookup<EdgeGeometry>(true);
+		var connectedEdgeLookup = GetBufferLookup<ConnectedEdge>(true);
+		var ownerLookup = GetComponentLookup<Owner>(true);
+		var carLaneLookup = GetComponentLookup<CarLane>(true);
+		var trackLaneLookup = GetComponentLookup<TrackLane>(true);
+		var curveLookup = GetComponentLookup<Curve>(true);
+
+		
+		var sourceSubLaneMap = new NativeHashMap<Entity, NativeList<SubLaneMatchInfo>>(16, Allocator.Temp);
+		
+		foreach (var subLaneMask in sourceSubLaneMasks)
+		{
+			if (!ownerLookup.HasComponent(subLaneMask.m_SubLane))
+			{
+				continue;
+			}
+
+			var owner = ownerLookup[subLaneMask.m_SubLane];
+			Entity edgeEntity = owner.m_Owner;
+			
+			LaneTurnType turnType = GetLaneTurnType(subLaneMask.m_SubLane, carLaneLookup, trackLaneLookup);
+			float3 position = GetSubLanePosition(subLaneMask.m_SubLane, curveLookup);
+
+			if (!sourceSubLaneMap.TryGetValue(edgeEntity, out var list))
+			{
+				list = new NativeList<SubLaneMatchInfo>(8, Allocator.Temp);
+				sourceSubLaneMap[edgeEntity] = list;
+			}
+			list.Add(new SubLaneMatchInfo
+			{
+				subLane = subLaneMask.m_SubLane,
+				turnType = turnType,
+				position = position,
+				mask = subLaneMask
+			});
+			sourceSubLaneMap[edgeEntity] = list;
+		}
+
+		
+		var targetToSourceEdgeMap = BuildEdgeMapping(sourceJunction, targetJunction, edgeLookup, edgeGeometryLookup, connectedEdgeLookup);
+
+		
+		for (int t = 0; t < targetSubLaneMasks.Length; t++)
+		{
+			var targetMask = targetSubLaneMasks[t];
+			
+			if (!ownerLookup.HasComponent(targetMask.m_SubLane))
+			{
+				continue;
+			}
+
+			var targetOwner = ownerLookup[targetMask.m_SubLane];
+			Entity targetEdge = targetOwner.m_Owner;
+			
+			
+			if (!targetToSourceEdgeMap.TryGetValue(targetEdge, out Entity sourceEdge))
+			{
+				continue;
+			}
+
+			
+			if (!sourceSubLaneMap.TryGetValue(sourceEdge, out var sourceSubLanes2))
+			{
+				continue;
+			}
+
+			LaneTurnType targetTurnType = GetLaneTurnType(targetMask.m_SubLane, carLaneLookup, trackLaneLookup);
+			float3 targetPosition = GetSubLanePosition(targetMask.m_SubLane, curveLookup);
+
+			
+			int bestMatchIndex = -1;
+			float bestMatchScore = float.MaxValue;
+
+			for (int s = 0; s < sourceSubLanes2.Length; s++)
+			{
+				var sourceInfo = sourceSubLanes2[s];
+				
+				
+				float turnTypeScore = (sourceInfo.turnType == targetTurnType) ? 0f : 100f;
+				
+				
+				float positionScore = math.distance(sourceInfo.position, targetPosition);
+				
+				float totalScore = turnTypeScore + positionScore;
+				
+				if (totalScore < bestMatchScore)
+				{
+					bestMatchScore = totalScore;
+					bestMatchIndex = s;
+				}
+			}
+
+			if (bestMatchIndex >= 0)
+			{
+				var sourceInfo = sourceSubLanes2[bestMatchIndex];
+				var newMask = new SubLaneGroupMask(targetMask.m_SubLane, targetPosition, sourceInfo.mask);
+				targetSubLaneMasks[t] = newMask;
+			}
+		}
+
+		
+		foreach (var kvp in sourceSubLaneMap)
+		{
+			kvp.Value.Dispose();
+		}
+		sourceSubLaneMap.Dispose();
+		targetToSourceEdgeMap.Dispose();
+	}
+
+	private struct SubLaneMatchInfo
+	{
+		public Entity subLane;
+		public LaneTurnType turnType;
+		public float3 position;
+		public SubLaneGroupMask mask;
+	}
+
+	private enum LaneTurnType
+	{
+		Straight,
+		Left,
+		Right,
+		UTurn,
+		Other
+	}
+
+	private LaneTurnType GetLaneTurnType(Entity subLane, ComponentLookup<CarLane> carLaneLookup, ComponentLookup<TrackLane> trackLaneLookup)
+	{
+		if (carLaneLookup.TryGetComponent(subLane, out var carLane))
+		{
+			if ((carLane.m_Flags & (CarLaneFlags.UTurnLeft | CarLaneFlags.UTurnRight)) != 0)
+			{
+				return LaneTurnType.UTurn;
+			}
+			if ((carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.GentleTurnLeft)) != 0)
+			{
+				return LaneTurnType.Left;
+			}
+			if ((carLane.m_Flags & (CarLaneFlags.TurnRight | CarLaneFlags.GentleTurnRight)) != 0)
+			{
+				return LaneTurnType.Right;
+			}
+			return LaneTurnType.Straight;
+		}
+
+		if (trackLaneLookup.TryGetComponent(subLane, out var trackLane))
+		{
+			if ((trackLane.m_Flags & TrackLaneFlags.TurnLeft) != 0)
+			{
+				return LaneTurnType.Left;
+			}
+			if ((trackLane.m_Flags & TrackLaneFlags.TurnRight) != 0)
+			{
+				return LaneTurnType.Right;
+			}
+			return LaneTurnType.Straight;
+		}
+
+		return LaneTurnType.Other;
+	}
+
+	private float3 GetSubLanePosition(Entity subLane, ComponentLookup<Curve> curveLookup)
+	{
+		if (curveLookup.TryGetComponent(subLane, out var curve))
+		{
+			return curve.m_Bezier.d;
+		}
+		return float3.zero;
+	}
+
+	private NativeHashMap<Entity, Entity> BuildEdgeMapping(
+		Entity sourceJunction, Entity targetJunction,
+		ComponentLookup<Edge> edgeLookup, ComponentLookup<EdgeGeometry> edgeGeometryLookup,
+		BufferLookup<ConnectedEdge> connectedEdgeLookup)
+	{
+		var result = new NativeHashMap<Entity, Entity>(8, Allocator.Temp);
+
+		if (!connectedEdgeLookup.HasBuffer(sourceJunction) || !connectedEdgeLookup.HasBuffer(targetJunction))
+		{
+			return result;
+		}
+
+		var sourceEdges = connectedEdgeLookup[sourceJunction];
+		var targetEdges = connectedEdgeLookup[targetJunction];
+
+		
+		float3 sourceCenter = float3.zero;
+		for (int i = 0; i < sourceEdges.Length; i++)
+		{
+			sourceCenter += GetEdgePositionForJunction(sourceJunction, sourceEdges[i].m_Edge, edgeLookup, edgeGeometryLookup);
+		}
+		sourceCenter /= sourceEdges.Length;
+
+		float3 targetCenter = float3.zero;
+		for (int i = 0; i < targetEdges.Length; i++)
+		{
+			targetCenter += GetEdgePositionForJunction(targetJunction, targetEdges[i].m_Edge, edgeLookup, edgeGeometryLookup);
+		}
+		targetCenter /= targetEdges.Length;
+
+		
+		var sourceEdgeAngles = new NativeList<(Entity edge, float angle)>(sourceEdges.Length, Allocator.Temp);
+		for (int i = 0; i < sourceEdges.Length; i++)
+		{
+			var pos = GetEdgePositionForJunction(sourceJunction, sourceEdges[i].m_Edge, edgeLookup, edgeGeometryLookup);
+			float angle = math.atan2(pos.z - sourceCenter.z, pos.x - sourceCenter.x);
+			sourceEdgeAngles.Add((sourceEdges[i].m_Edge, angle));
+		}
+
+		
+		for (int t = 0; t < targetEdges.Length; t++)
+		{
+			var targetEdge = targetEdges[t].m_Edge;
+			var targetPos = GetEdgePositionForJunction(targetJunction, targetEdge, edgeLookup, edgeGeometryLookup);
+			float targetAngle = math.atan2(targetPos.z - targetCenter.z, targetPos.x - targetCenter.x);
+
+			
+			Entity matchedSource = TryFindConnectedSourceEdge(targetJunction, targetEdge, sourceJunction, edgeLookup, connectedEdgeLookup, 10);
+			
+			if (matchedSource == Entity.Null)
+			{
+				
+				float bestAngleDiff = float.MaxValue;
+				for (int s = 0; s < sourceEdgeAngles.Length; s++)
+				{
+					float angleDiff = math.abs(AngleDifference(targetAngle, sourceEdgeAngles[s].angle));
+					if (angleDiff < bestAngleDiff && angleDiff < math.PI / 4)
+					{
+						bestAngleDiff = angleDiff;
+						matchedSource = sourceEdgeAngles[s].edge;
+					}
+				}
+			}
+
+			if (matchedSource != Entity.Null)
+			{
+				result[targetEdge] = matchedSource;
+			}
+		}
+
+		sourceEdgeAngles.Dispose();
+		return result;
 	}
 
 	#endregion
@@ -1586,7 +2048,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 	{
 		if (junctionEntity == Entity.Null || !EntityManager.HasBuffer<CustomPhaseData>(junctionEntity))
 		{
-			return (currentPhase + 1) % 1; // Default to next phase
+			return (currentPhase + 1) % 1; 
 		}
 
 		EntityManager.TryGetBuffer<CustomPhaseData>(junctionEntity, false, out var phases);
@@ -1673,7 +2135,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 		if (bestPhase != currentPhase)
 		{
-			// Apply to all members with their offsets
+			
 			var members = GetGroupMembers(groupEntity);
 
 			foreach (var memberEntity in members)
@@ -1686,7 +2148,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 				var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
 				var trafficLights = EntityManager.GetComponentData<TrafficLights>(memberEntity);
 
-				// Calculate adjusted phase with offset
+				
 				int adjustedPhase = bestPhase + memberData.m_PhaseOffset;
 				int phaseCount = GetPhaseCount(memberEntity);
 				if (phaseCount > 0)
@@ -1713,7 +2175,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			return;
 		}
 
-		// Check if junction is in a group
+		
 		if (!EntityManager.HasComponent<TrafficGroupMember>(junctionEntity))
 		{
 			return;
@@ -1852,7 +2314,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		var members = GetGroupMembers(groupEntity);
 		var invalidMembers = new NativeList<Entity>(Allocator.Temp);
 
-		// Check for invalid members
+		
 		foreach (var memberEntity in members)
 		{
 			if (!EntityManager.Exists(memberEntity) || !EntityManager.HasComponent<TrafficLights>(memberEntity))
@@ -1861,7 +2323,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			}
 		}
 
-		// Remove invalid members
+		
 		foreach (var invalidMember in invalidMembers)
 		{
 			if (EntityManager.HasComponent<TrafficGroupMember>(invalidMember))
@@ -1873,23 +2335,23 @@ public partial class TrafficGroupSystem : GameSystemBase
 		invalidMembers.Dispose();
 		members.Dispose();
 
-		// Check if group still has members
+		
 		int memberCount = GetGroupMemberCount(groupEntity);
 		if (memberCount == 0)
 		{
-			// Delete empty group
+			
 			EntityManager.DestroyEntity(groupEntity);
 			return;
 		}
 
-		// Ensure there's a leader
+		
 		Entity leader = GetGroupLeader(groupEntity);
 		if (leader == Entity.Null)
 		{
 			AssignNewLeader(groupEntity);
 		}
 
-		// Reindex members
+		
 		ReindexGroupMembers(groupEntity);
 	}
 

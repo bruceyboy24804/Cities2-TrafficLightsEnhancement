@@ -34,7 +34,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     ExtraLaneSignal signal = extraLaneSignals[index];
                     bool isValid = true;
 
-                    // Validate source sublane reference
+                    
                     if (signal.m_SourceSubLane != Entity.Null)
                     {
                         if (!entityInfoLookup.Exists(signal.m_SourceSubLane))
@@ -45,7 +45,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
 
                     if (!isValid)
                     {
-                        // Reset to defaults
+                        
                         signal.m_YieldGroupMask = 0;
                         signal.m_IgnorePriorityGroupMask = 0;
                         signal.m_SourceSubLane = Entity.Null;
@@ -78,7 +78,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 {
                     Entity entity = entities[index];
                     
-                    // CustomTrafficLights should only exist on Node entities
+                    
                     if (!nodeData.HasComponent(entity))
                     {
                         commandBuffer.RemoveComponent<CustomTrafficLights>(unfilteredChunkIndex, entity);
@@ -113,7 +113,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     bool needsUpdate = false;
                     bool shouldRemove = false;
 
-                    // Validate group entity reference
+                    
                     if (member.m_GroupEntity != Entity.Null)
                     {
                         if (!entityInfoLookup.Exists(member.m_GroupEntity) || !trafficGroupData.HasComponent(member.m_GroupEntity))
@@ -126,7 +126,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                         shouldRemove = true;
                     }
 
-                    // Validate leader entity reference
+                    
                     if (!shouldRemove && member.m_LeaderEntity != Entity.Null)
                     {
                         if (!entityInfoLookup.Exists(member.m_LeaderEntity))
@@ -136,7 +136,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                         }
                     }
 
-                    // Validate data ranges
+                    
                     if (!shouldRemove)
                     {
                         if (member.m_PhaseOffset < 0 || member.m_PhaseOffset > 16)
@@ -201,7 +201,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     TrafficGroup group = trafficGroups[index];
                     bool needsUpdate = false;
 
-                    // Validate and fix invalid values
+                    
                     if (group.m_GreenWaveSpeed <= 0)
                     {
                         group.m_GreenWaveSpeed = 50f;
@@ -251,7 +251,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     DynamicBuffer<EdgeGroupMask> buffer = edgeGroupMaskAccessor[index];
                     bool bufferModified = false;
 
-                    // Validate edge references - remove invalid entries
+                    
                     for (int i = buffer.Length - 1; i >= 0; i--)
                     {
                         EdgeGroupMask mask = buffer[i];
@@ -299,7 +299,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                         CustomPhaseData data = buffer[i];
                         bool needsUpdate = false;
 
-                        // Validate and clamp values
+                        
                         if (data.m_MinimumDuration > data.m_MaximumDuration)
                         {
                             data.m_MinimumDuration = 2;

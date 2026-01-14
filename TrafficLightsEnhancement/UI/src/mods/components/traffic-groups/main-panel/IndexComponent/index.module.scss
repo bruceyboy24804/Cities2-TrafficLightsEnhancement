@@ -73,7 +73,7 @@
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
-            background-image: url(coui://uil/Standard/ArrowRightThickStroke.svg);
+            background-image: none;
             cursor: pointer;
             opacity: 0.7;
             transition: opacity 0.15s ease, transform 0.15s ease;
@@ -83,7 +83,7 @@
             }
 
             &.expanded {
-                background-image: url(coui://uil/Standard/ArrowDownThickStroke.svg);
+                background-image: none;
             }
         }
     }

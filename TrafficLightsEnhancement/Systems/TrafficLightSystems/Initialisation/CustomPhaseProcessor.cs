@@ -167,7 +167,7 @@ public struct CustomPhaseProcessor
             job.m_LaneSignalData[subLane] = laneSignal;
         }
 
-        // Set up pedestrian crossings at tracks
+        
         for (int i = 0; i < subLanes.Length; i++)
         {
             Entity subLane = subLanes[i].m_SubLane;

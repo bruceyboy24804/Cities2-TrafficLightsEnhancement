@@ -67,7 +67,7 @@ public struct EdgeGroupMask : IBufferElementData, ISerializable, IJsonWritable
         }
         else
         {
-            // Old format: reads 2 signals, merges them
+            
             reader.Read(out GroupMask.Signal signal1);
             reader.Read(out GroupMask.Signal signal2);
             m_Pedestrian = signal1.m_GoGroupMask != 0 ? signal1 : signal2;

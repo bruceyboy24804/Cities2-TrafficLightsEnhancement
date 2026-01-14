@@ -26,7 +26,7 @@ public struct SignalDelayData : IBufferElementData, ISerializable
         
         if (version < TLEDataVersion.V2)
         {
-            // Old format: first int was Entity.Index, next int is Entity.Version
+            
             reader.Read(out int entityVersion);
             m_Edge = new Entity { Index = version, Version = entityVersion };
             reader.Read(out m_OpenDelay);

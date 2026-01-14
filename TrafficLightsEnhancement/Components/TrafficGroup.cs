@@ -36,7 +36,7 @@ public struct TrafficGroup : IComponentData, ISerializable
 
     public void Deserialize<TReader>(TReader reader) where TReader : IReader
     {
-        // Initialize to defaults
+        
         m_IsCoordinated = false;
         m_GreenWaveEnabled = false;
         m_GreenWaveSpeed = 50f;
@@ -181,8 +181,6 @@ public struct TrafficGroupName : IComponentData, ISerializable
             
         int length = math.min(name.Length, 64);
         int charIndex = 0;
-        
-        // Pack characters into ulongs
         for (int part = 0; part < 8 && charIndex < length; part++)
         {
             ulong value = 0;

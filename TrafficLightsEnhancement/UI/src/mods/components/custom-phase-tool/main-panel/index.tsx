@@ -138,7 +138,7 @@ export default function MainPanel(props: {items: MainPanelItem[], selectedEntity
     }
   };
 
-  // Filter edges to only show edges for the selected entity
+  
   const filteredEdges = edgeInfoList.filter(edge => 
     edge.m_Node && 
     edge.m_Node.index === props.selectedEntity.index && 
@@ -154,13 +154,13 @@ export default function MainPanel(props: {items: MainPanelItem[], selectedEntity
   let manualSignalGroup = 0;
   let length = 0;
 
-  // First item is always the header with traffic light mode info
+  
   if (props.items.length > 0 && props.items[0].itemType == "customPhaseHeader") {
     headerItem = props.items[0];
     length = headerItem.phaseCount;
   }
 
-  // Get phase data from the first customPhase item (index 1 since header is at 0)
+  
   if (props.items.length > 1 && props.items[1].itemType == "customPhase") {
     activeIndex = props.items[1].activeIndex;
     activeViewingIndex = props.items[1].activeViewingIndex;
@@ -168,25 +168,25 @@ export default function MainPanel(props: {items: MainPanelItem[], selectedEntity
     manualSignalGroup = props.items[1].manualSignalGroup;
   }
 
-  // Adjust indices to account for header item at index 0
+  
   if (activeIndex >= 0) {
-    const newActiveItem = props.items[activeIndex + 1]; // +1 to skip header
+    const newActiveItem = props.items[activeIndex + 1]; 
     if (newActiveItem && newActiveItem.itemType == "customPhase") {
       activeItem = newActiveItem;
     }
   }
   if (manualSignalGroup > 0) {
-    const newCurrentItem = props.items[manualSignalGroup]; // manualSignalGroup is 1-indexed, header is at 0
+    const newCurrentItem = props.items[manualSignalGroup]; 
     if (newCurrentItem && newCurrentItem.itemType == "customPhase") {
       currentItem = newCurrentItem;
     }
   } else if (activeViewingIndex >= 0) {
-    const newCurrentItem = props.items[activeViewingIndex + 1]; // +1 to skip header
+    const newCurrentItem = props.items[activeViewingIndex + 1]; 
     if (newCurrentItem && newCurrentItem.itemType == "customPhase") {
       currentItem = newCurrentItem;
     }
   } else if (currentSignalGroup > 0 && currentSignalGroup < props.items.length) {
-    const newCurrentItem = props.items[currentSignalGroup]; // currentSignalGroup is 1-indexed, header is at 0
+    const newCurrentItem = props.items[currentSignalGroup]; 
     if (newCurrentItem && newCurrentItem.itemType == "customPhase") {
       currentItem = newCurrentItem;
     }

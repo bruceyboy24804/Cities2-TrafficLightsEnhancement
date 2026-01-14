@@ -31,7 +31,7 @@ public partial class TrafficLightsOverlaySystem : GameSystemBase
 		m_UISystem = World.GetOrCreateSystemManaged<UI.UISystem>();
 		m_TrafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
 		
-		// Initialize lookups
+		
 		m_ConnectedEdgeLookup = GetBufferLookup<ConnectedEdge>(true);
 		m_EdgeLookup = GetComponentLookup<Edge>(true);
 		m_EdgeGeometryLookup = GetComponentLookup<EdgeGeometry>(true);
@@ -58,7 +58,8 @@ public partial class TrafficLightsOverlaySystem : GameSystemBase
 		OverlayRenderSystem.Buffer overlayBuffer = m_OverlayRenderSystem.GetBuffer(out JobHandle dependencies);
 		Dependency = dependencies;
 
-		DrawGizmoForEntity(ref overlayBuffer, selectedEntity, displayIndex);
+		bool showUncovered = m_UISystem.m_MainPanelState == UI.UISystem.MainPanelState.CustomPhase;
+		DrawGizmoForEntity(ref overlayBuffer, selectedEntity, displayIndex, showUncovered);
 		
 		Entity highlightedEdge = m_UISystem.GetHighlightedEdge();
 		if (highlightedEdge != Entity.Null && EntityManager.Exists(highlightedEdge))
@@ -150,7 +151,7 @@ public partial class TrafficLightsOverlaySystem : GameSystemBase
 		return displayIndex;
 	}
 
-	private void DrawGizmoForEntity(ref OverlayRenderSystem.Buffer overlayBuffer, Entity entity, int displayIndex)
+	private void DrawGizmoForEntity(ref OverlayRenderSystem.Buffer overlayBuffer, Entity entity, int displayIndex, bool showUncovered = false)
 	{
 		if (EntityManager.TryGetBuffer<SubLane>(entity, true, out var subLaneBuffer))
 		{
@@ -172,6 +173,13 @@ public partial class TrafficLightsOverlaySystem : GameSystemBase
 				}
 				if (EntityManager.TryGetComponent<LaneSignal>(subLaneEntity, out var laneSignal) && EntityManager.TryGetComponent<Curve>(subLaneEntity, out var curve))
 				{
+					
+					if (showUncovered && laneSignal.m_GroupMask == 0)
+					{
+						overlayBuffer.DrawCurve(new Color(1f, 0.5f, 0f, 1f), curve.m_Bezier, 0.5f); 
+						continue;
+					}
+					
 					Color color = Color.green;
 					if (EntityManager.TryGetComponent<ExtraLaneSignal>(subLaneEntity, out var extraLaneSignal) && (extraLaneSignal.m_YieldGroupMask & 1 << displayIndex) != 0)
 					{

@@ -14,7 +14,7 @@ public struct ExtraLaneSignal : IComponentData, IQueryTypeParameter, ISerializab
 
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
-        writer.Write(3); // Schema version 3: ushort masks + source sublane
+        writer.Write(3); 
         writer.Write(m_YieldGroupMask);
         writer.Write(m_IgnorePriorityGroupMask);
         writer.Write(m_SourceSubLane);
@@ -22,14 +22,14 @@ public struct ExtraLaneSignal : IComponentData, IQueryTypeParameter, ISerializab
 
     public void Deserialize<TReader>(TReader reader) where TReader : IReader
     {
-        // Initialize to defaults first
+        
         m_YieldGroupMask = 0;
         m_IgnorePriorityGroupMask = 0;
         m_SourceSubLane = Entity.Null;
         
         reader.Read(out int version);
         
-        // Version 1: old flags format
+        
         if (version == 1)
         {
             reader.Read(out uint flags);
@@ -39,14 +39,14 @@ public struct ExtraLaneSignal : IComponentData, IQueryTypeParameter, ISerializab
                 m_IgnorePriorityGroupMask = ushort.MaxValue;
         }
         
-        // Version 2+: ushort masks
+        
         if (version >= TLEDataVersion.V2)
         {
             reader.Read(out m_YieldGroupMask);
             reader.Read(out m_IgnorePriorityGroupMask);
         }
         
-        // Version 3+: source sublane
+        
         if (version >= 3)
         {
             reader.Read(out m_SourceSubLane);

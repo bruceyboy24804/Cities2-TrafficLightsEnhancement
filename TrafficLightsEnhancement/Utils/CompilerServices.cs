@@ -1,4 +1,4 @@
-// System.Private.CoreLib, Version=6.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e
+
 
 namespace System.Runtime.CompilerServices;
 

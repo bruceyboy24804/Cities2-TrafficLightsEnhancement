@@ -1,6 +1,6 @@
 #region Assembly Game, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-// location unknown
-// Decompiled with ICSharpCode.Decompiler 9.1.0.7988
+
+
 #endregion
 
 using System.Runtime.CompilerServices;

@@ -76,7 +76,7 @@ export default function Content(props: {items: MainPanelItem[], addMemberData?: 
             <div className={styles.memberListTitle}>Members ({props.addMemberData.members.length})</div>
             {props.addMemberData.members
               .sort((a, b) => {
-                // Leader first, then by index
+                
                 if (a.isLeader && !b.isLeader) return -1;
                 if (!a.isLeader && b.isLeader) return 1;
                 return a.index - b.index;

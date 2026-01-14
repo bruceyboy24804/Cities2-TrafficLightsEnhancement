@@ -472,7 +472,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
             {
                 CustomPhaseData checkPhase = customPhaseDataBuffer[checkStep];
                 
-                // Calculate metric for this step
+                
                 float flow = checkPhase.AverageCarFlow();
                 float wait = checkPhase.m_WeightedWaiting * checkPhase.m_WaitFlowBalance;
                 float metric = checkPhase.GetMetric(flow, wait);
@@ -671,7 +671,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
         {
             int signalDelay = 0;
             
-            // Per-phase delays from EdgeGroupMask
+            
             if (job.m_ExtraTypeHandle.m_EdgeGroupMaskLookup.TryGetBuffer(junctionEntity, out DynamicBuffer<EdgeGroupMask> edgeGroupMaskBuffer))
             {
                 int signalIndex = currentSignalGroup - 1;
@@ -682,7 +682,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
                 }
             }
             
-            // Per-edge delays from SignalDelayData
+            
             if (job.m_ExtraTypeHandle.m_SignalDelayLookup.TryGetBuffer(junctionEntity, out DynamicBuffer<SignalDelayData> signalDelayBuffer))
             {
                 for (int i = 0; i < signalDelayBuffer.Length; i++)

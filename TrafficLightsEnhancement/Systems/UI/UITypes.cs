@@ -192,21 +192,21 @@ public static class UITypes
 
         public bool endPhasePrematurely;
         
-        // Step change metric settings
+        
         public int changeMetric;
         public float waitFlowBalance;
         
-        // Traffic light mode (0=Dynamic/CustomPhase, 1=FixedTimed)
+        
         public int trafficLightMode;
         
-        // Traffic light active states
+        
         public bool carActive;
         public bool publicCarActive;
         public bool trackActive;
         public bool pedestrianActive;
         public bool bicycleActive;
         
-        // Signal delay data
+        
         public bool hasSignalDelays;
         public int carOpenDelay;
         public int carCloseDelay;
@@ -219,7 +219,7 @@ public static class UITypes
         public int bicycleOpenDelay;
         public int bicycleCloseDelay;
         
-        // TMPE-style vehicle weights
+        
         public float carWeight;
         public float publicCarWeight;
         public float trackWeight;
@@ -227,7 +227,7 @@ public static class UITypes
         public float bicycleWeight;
         public float smoothingFactor;
         
-        // Flow/wait ratios (read-only statistics)
+        
         public float flowRatio;
         public float waitRatio;
     }

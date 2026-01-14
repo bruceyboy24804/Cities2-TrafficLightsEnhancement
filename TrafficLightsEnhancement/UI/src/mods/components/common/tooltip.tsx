@@ -72,7 +72,7 @@ export default function Tooltip(props: {position: "bottom" | "bottom-start" | "r
     setShow(false);
   }, []);
 
-  // Workaround for mouseleave not firing reliably
+  
   useEffect(() => {
     if (containerRef.current && show) {
       const mouseMoveHandler = (e: MouseEvent) => {

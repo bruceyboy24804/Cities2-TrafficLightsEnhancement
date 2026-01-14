@@ -6,23 +6,23 @@ namespace C2VM.TrafficLightsEnhancement.Extensions
     using System.Reflection;
   
 
-    /// <summary>
-    /// Extention methods to make reflection easier.
-    /// </summary>
+    
+    
+    
     public static class ReflectionExtensions
     {
-        /// <summary>
-        /// Quick way to use all relevent binding flags.
-        /// </summary>
+        
+        
+        
         public static readonly BindingFlags AllFlags = BindingFlags.DeclaredOnly | BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.GetProperty;
 
-        /// <summary>
-        /// Uses reflection to get the value of a member of an object.
-        /// </summary>
-        /// <param name="obj">Object to be reflected.</param>
-        /// <param name="memberName">String name of member.</param>
-        /// <returns>Value of the member of the origial object.</returns>
-        /// <exception cref="System.Exception">Exception for not finding the specified member name within the object.</exception>
+        
+        
+        
+        
+        
+        
+        
         public static object GetMemberValue(this object obj, string memberName)
         {
             var memInf = GetMemberInfo(obj, memberName);
@@ -44,14 +44,14 @@ namespace C2VM.TrafficLightsEnhancement.Extensions
             throw new System.Exception();
         }
 
-        /// <summary>
-        /// Uses Reflection to Set to value of a member of an object.
-        /// </summary>
-        /// <param name="obj">Object to be reflected.</param>
-        /// <param name="memberName">String name of member.</param>
-        /// <param name="newValue">New value to be set.</param>
-        /// <returns>Returns old value.</returns>
-        /// <exception cref="System.Exception">Exception thrown if member name is not found on object.</exception>
+        
+        
+        
+        
+        
+        
+        
+        
         public static object SetMemberValue(this object obj, string memberName, object newValue)
         {
             var memInf = GetMemberInfo(obj, memberName);
@@ -77,12 +77,12 @@ namespace C2VM.TrafficLightsEnhancement.Extensions
             return oldValue;
         }
 
-        /// <summary>
-        /// Uses reflection to get member info.
-        /// </summary>
-        /// <param name="obj">Object to be reflected.</param>
-        /// <param name="memberName">String name of member.</param>
-        /// <returns>Member info.</returns>
+        
+        
+        
+        
+        
+        
         private static MemberInfo GetMemberInfo(object obj, string memberName)
         {
             var prps = new System.Collections.Generic.List<PropertyInfo>

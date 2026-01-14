@@ -2,6 +2,7 @@ using C2VM.TrafficLightsEnhancement.Components;
 using Colossal.UI.Binding;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using static C2VM.TrafficLightsEnhancement.Systems.UI.UITypes;
 
 namespace C2VM.TrafficLightsEnhancement.Utils;
@@ -53,6 +54,11 @@ public partial struct NodeUtils
         public short m_OpenDelay => m_EdgeGroupMask.m_OpenDelay;
 
         public short m_CloseDelay => m_EdgeGroupMask.m_CloseDelay;
+
+        
+        public float3 m_Direction;
+
+        public NativeList<ComputedLaneConnection> m_LaneConnections;
 
         public void Write(IJsonWriter writer)
         {
@@ -106,6 +112,19 @@ public partial struct NodeUtils
             writer.Write((int)m_OpenDelay);
             writer.PropertyName("m_CloseDelay");
             writer.Write((int)m_CloseDelay);
+            writer.PropertyName("m_Direction");
+            writer.Write(m_Direction);
+            writer.PropertyName("m_LaneConnections");
+            int laneConnectionCount = m_LaneConnections.IsCreated ? m_LaneConnections.Length : 0;
+            writer.ArrayBegin(laneConnectionCount);
+            if (m_LaneConnections.IsCreated)
+            {
+                foreach (var laneConnection in m_LaneConnections)
+                {
+                    writer.Write(laneConnection);
+                }
+            }
+            writer.ArrayEnd();
             writer.TypeEnd();
         }
     }

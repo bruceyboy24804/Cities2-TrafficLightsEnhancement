@@ -39,7 +39,7 @@ export async function engineCall<T>(eventName: string, data?: string): Promise<T
     }
     return undefined;
   }
-  // Fallback for simple trigger names
+  
   if (data) {
     trigger(mod.id, `TRIGGER:${eventName}`, data);
   } else {
