@@ -55,6 +55,7 @@ public partial class UISystem : ExtendedUISystemBase
                 DrawEdgeHighlight(ref overlayBuffer, m_SelectedEntity, m_HighlightedEdge, Color.magenta);
             }
 
+            // Draw other group members
             if (EntityManager.HasComponent<TrafficGroupMember>(m_SelectedEntity))
             {
                 var member = EntityManager.GetComponentData<TrafficGroupMember>(m_SelectedEntity);
@@ -68,7 +69,18 @@ public partial class UISystem : ExtendedUISystemBase
                     {
                         if (memberEntity != m_SelectedEntity)
                         {
-                            DrawGizmoForEntity(ref overlayBuffer, memberEntity, displayIndex);
+                            // In CustomPhase editor, show each member's own current phase
+                            // In TrafficGroups view, sync to selected intersection's phase
+                            int memberDisplayIndex = displayIndex;
+                            if (m_MainPanelState == MainPanelState.CustomPhase)
+                            {
+                                if (EntityManager.TryGetComponent<TrafficLights>(memberEntity, out var memberTrafficLights))
+                                {
+                                    memberDisplayIndex = memberTrafficLights.m_CurrentSignalGroup - 1;
+                                }
+                            }
+                            
+                            DrawGizmoForEntity(ref overlayBuffer, memberEntity, memberDisplayIndex);
                             
                             // Draw node outline: yellow for leader, white for followers
                             Color outlineColor = memberEntity == leaderEntity ? Color.yellow : Color.white;

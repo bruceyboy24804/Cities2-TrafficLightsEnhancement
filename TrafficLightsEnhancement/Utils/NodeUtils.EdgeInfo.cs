@@ -40,6 +40,8 @@ public partial struct NodeUtils
 
         public int m_TrainTrackCount;
 
+        public int m_BicycleLaneCount;
+
         public int m_PedestrianLaneStopLineCount;
 
         public int m_PedestrianLaneNonStopLineCount;
@@ -47,6 +49,10 @@ public partial struct NodeUtils
         public NativeArray<SubLaneInfo> m_SubLaneInfoList;
 
         public EdgeGroupMask m_EdgeGroupMask;
+
+        public short m_OpenDelay => m_EdgeGroupMask.m_OpenDelay;
+
+        public short m_CloseDelay => m_EdgeGroupMask.m_CloseDelay;
 
         public void Write(IJsonWriter writer)
         {
@@ -79,6 +85,10 @@ public partial struct NodeUtils
             writer.Write(m_TrackLaneStraightCount);
             writer.PropertyName("m_TrackLaneRightCount");
             writer.Write(m_TrackLaneRightCount);
+            writer.PropertyName("m_TrainTrackCount");
+            writer.Write(m_TrainTrackCount);
+            writer.PropertyName("m_BicycleLaneCount");
+            writer.Write(m_BicycleLaneCount);
             writer.PropertyName("m_PedestrianLaneStopLineCount");
             writer.Write(m_PedestrianLaneStopLineCount);
             writer.PropertyName("m_PedestrianLaneNonStopLineCount");
@@ -92,6 +102,10 @@ public partial struct NodeUtils
             writer.ArrayEnd();
             writer.PropertyName("m_EdgeGroupMask");
             writer.Write(m_EdgeGroupMask);
+            writer.PropertyName("m_OpenDelay");
+            writer.Write((int)m_OpenDelay);
+            writer.PropertyName("m_CloseDelay");
+            writer.Write((int)m_CloseDelay);
             writer.TypeEnd();
         }
     }

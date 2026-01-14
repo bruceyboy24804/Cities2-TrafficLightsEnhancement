@@ -76,5 +76,6 @@ public struct ExtraTypeHandle
         m_EdgeGroupMask.Update(ref state);
         m_SubLaneGroupMask.Update(ref state);
         m_CustomPhaseData.Update(ref state);
+        m_SecondaryLane.Update(ref state);
     }
 }

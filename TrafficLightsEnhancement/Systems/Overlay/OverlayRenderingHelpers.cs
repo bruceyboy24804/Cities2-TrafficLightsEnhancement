@@ -1,7 +1,6 @@
 using Colossal.Mathematics;
 using Game.Net;
 using Game.Rendering;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -53,13 +52,13 @@ public static class OverlayRenderingHelpers
 				Bezier4x3 rightToCorner = MathUtils.Cut(edgeSegment.m_Right, cut.zw);
 				float3 leftCorner = math.select(leftToCorner.a, leftToCorner.d, !isNearEnd);
 				float3 rightCorner = math.select(rightToCorner.a, rightToCorner.d, !isNearEnd);
-				overlayBuffer.DrawLine(color, color, 0, 0, new Line3.Segment(leftCorner, rightCorner), lineWidth, 1);
-				overlayBuffer.DrawCurve(color, color, 0, 0, leftToCorner, lineWidth, 1);
-				overlayBuffer.DrawCurve(color, color, 0, 0, rightToCorner, lineWidth, 1);
+				overlayBuffer.DrawLine(color, color, 0.0f, 0, new Line3.Segment(leftCorner, rightCorner), lineWidth,  1);
+				overlayBuffer.DrawCurve(color, color, 0.0f, 0, leftToCorner, lineWidth, 1);
+				overlayBuffer.DrawCurve(color, color, 0.0f, 0, rightToCorner, lineWidth, 1);
 			}
 			else
 			{
-				overlayBuffer.DrawLine(color, color, 0, 0, 
+				overlayBuffer.DrawLine(color, color, 0.0f, 0, 
 					new Line3.Segment(
 						math.select(edgeSegment.m_Left.a, edgeSegment.m_Left.d, isNearEnd), 
 						math.select(edgeSegment.m_Right.a, edgeSegment.m_Right.d, isNearEnd)), 
@@ -72,13 +71,13 @@ public static class OverlayRenderingHelpers
 					? startNodeGeometryData[edge.m_Edge].m_Geometry 
 					: endNodeGeometryData[edge.m_Edge].m_Geometry;
 
-				overlayBuffer.DrawCurve(color, color, 0, 0, edgeNodeGeometry.m_Left.m_Left, lineWidth, 1);
-				overlayBuffer.DrawCurve(color, color, 0, 0, edgeNodeGeometry.m_Right.m_Right, lineWidth, 1);
+				overlayBuffer.DrawCurve(color, color, 0.0f, 0, edgeNodeGeometry.m_Left.m_Left, lineWidth, 1);
+				overlayBuffer.DrawCurve(color, color, 0.0f, 0, edgeNodeGeometry.m_Right.m_Right, lineWidth, 1);
 
 				if (edgeNodeGeometry.m_MiddleRadius > 0f)
 				{
-					overlayBuffer.DrawCurve(color, color, 0, 0, edgeNodeGeometry.m_Left.m_Right, lineWidth, 1);
-					overlayBuffer.DrawCurve(color, color, 0, 0, edgeNodeGeometry.m_Right.m_Left, lineWidth, 1);
+					overlayBuffer.DrawCurve(color, color, 0.0f, 0, edgeNodeGeometry.m_Left.m_Right, lineWidth, 1);
+					overlayBuffer.DrawCurve(color, color, 0.0f, 0, edgeNodeGeometry.m_Right.m_Left, lineWidth,1);
 				}
 			}
 		}
@@ -135,7 +134,7 @@ public static class OverlayRenderingHelpers
 					? startNodeGeometryData[edge.m_Edge].m_Geometry 
 					: endNodeGeometryData[edge.m_Edge].m_Geometry;
 
-				overlayBuffer.DrawLine(color, color, 0, 0, 
+				overlayBuffer.DrawLine(color, color, 0.0f,  0, 
 					new Line3.Segment(edgeNodeGeometry.m_Left.m_Left.a, edgeNodeGeometry.m_Right.m_Right.a), 
 					lineWidth, 1);
 			}

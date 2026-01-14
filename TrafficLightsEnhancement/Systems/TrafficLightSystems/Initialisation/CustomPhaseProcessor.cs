@@ -239,5 +239,72 @@ public struct CustomPhaseProcessor
             job.m_CommandBuffer.SetComponent(unfilteredChunkIndex, subLane, laneSignal);
             job.m_CommandBuffer.SetComponent(unfilteredChunkIndex, subLane, extraLaneSignal);
         }
+
+        foreach (ConnectedEdge connectedEdge in connectedEdges)
+        {
+            Entity edge = connectedEdge.m_Edge;
+            float3 edgePosition = NodeUtils.GetEdgePosition(ref job, nodeEntity, edge);
+            if (CustomPhaseUtils.TryGet(edgeGroupMasks, edge, edgePosition, out EdgeGroupMask groupMask) >= 0)
+            {
+                ushort goGroupMask = groupMask.m_Bicycle.m_GoGroupMask;
+                if (goGroupMask == 0)
+                {
+                    goGroupMask = groupMask.m_Car.m_Straight.m_GoGroupMask;
+                }
+                for (int i = 0; i < subLanes.Length; i++)
+                {
+                    Entity subLane = subLanes[i].m_SubLane;
+                    if (!job.m_ExtraTypeHandle.m_SecondaryLane.HasComponent(subLane))
+                    {
+                        continue;
+                    }
+                    if (job.m_CarLaneData.HasComponent(subLane))
+                    {
+                        continue;
+                    }
+                    if (!job.m_LaneSignalData.TryGetComponent(subLane, out LaneSignal laneSignal))
+                    {
+                        continue;
+                    }
+                    if (job.m_ExtraTypeHandle.m_Lane.TryGetComponent(subLane, out Lane _))
+                    {
+                        bool isNearEdge = false;
+                        if (job.m_CurveData.TryGetComponent(subLane, out Curve curve))
+                        {
+                            float3 a = curve.m_Bezier.a;
+                            float3 d = curve.m_Bezier.d;
+                            float distA = math.distance(a, edgePosition);
+                            float distD = math.distance(d, edgePosition);
+                            if (distA < 50f || distD < 50f)
+                            {
+                                isNearEdge = true;
+                            }
+                        }
+                        if (!isNearEdge)
+                        {
+                            continue;
+                        }
+                    }
+                    laneSignal.m_GroupMask = goGroupMask;
+                    laneSignal.m_Default = 0;
+                    laneSignal.m_Flags |= LaneSignalFlags.CanExtend;
+                    ExtraLaneSignal extraLaneSignal = new ExtraLaneSignal();
+                    extraLaneSignal.m_YieldGroupMask = 0;
+                    extraLaneSignal.m_IgnorePriorityGroupMask = 0;
+                    Simulation.PatchedTrafficLightSystem.UpdateLaneSignal(trafficLights, ref laneSignal, ref extraLaneSignal);
+                    job.m_LaneSignalData[subLane] = laneSignal;
+                    if (job.m_ExtraTypeHandle.m_ExtraLaneSignal.HasComponent(subLane))
+                    {
+                        job.m_CommandBuffer.SetComponent(unfilteredChunkIndex, subLane, extraLaneSignal);
+                    }
+                    else
+                    {
+                        job.m_CommandBuffer.AddComponent(unfilteredChunkIndex, subLane, extraLaneSignal);
+                    }
+                }
+            }
+        }
+
+        laneConnectionMap.Dispose();
     }
 }

@@ -107,7 +107,25 @@ public partial class ToolSystem : NetToolSystem
                 {
                     if (EntityManager.HasComponent<CustomTrafficLights>(m_RaycastResult))
                     {
+                        // Remove from traffic group first if member
+                        var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
+                        trafficGroupSystem.RemoveJunctionFromGroup(m_RaycastResult);
+                        
+                        // Remove all TLE-related components and buffers
                         EntityManager.RemoveComponent<CustomTrafficLights>(m_RaycastResult);
+                        if (EntityManager.HasBuffer<CustomPhaseData>(m_RaycastResult))
+                        {
+                            EntityManager.RemoveComponent<CustomPhaseData>(m_RaycastResult);
+                        }
+                        if (EntityManager.HasBuffer<EdgeGroupMask>(m_RaycastResult))
+                        {
+                            EntityManager.RemoveComponent<EdgeGroupMask>(m_RaycastResult);
+                        }
+                        if (EntityManager.HasBuffer<SubLaneGroupMask>(m_RaycastResult))
+                        {
+                            EntityManager.RemoveComponent<SubLaneGroupMask>(m_RaycastResult);
+                        }
+                        
                         EntityManager.AddComponentData(m_RaycastResult, default(Game.Common.Updated));
                         m_UISystem.RedrawIcon();
                         UpdateTooltip(m_RaycastResult);

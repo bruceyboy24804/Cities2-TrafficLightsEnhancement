@@ -27,6 +27,8 @@ public partial struct NodeUtils
 
         public int m_TrackLaneRightCount;
 
+        public int m_BicycleLaneCount;
+
         public int m_PedestrianLaneCount;
 
         public SubLaneGroupMask m_SubLaneGroupMask;
@@ -52,6 +54,8 @@ public partial struct NodeUtils
             writer.Write(m_TrackLaneStraightCount);
             writer.PropertyName("m_TrackLaneRightCount");
             writer.Write(m_TrackLaneRightCount);
+            writer.PropertyName("m_BicycleLaneCount");
+            writer.Write(m_BicycleLaneCount);
             writer.PropertyName("m_PedestrianLaneCount");
             writer.Write(m_PedestrianLaneCount);
             writer.PropertyName("m_SubLaneGroupMask");

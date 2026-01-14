@@ -46,7 +46,8 @@ public partial struct NodeUtils
         ComponentLookup<TrackLane> trackLaneLookup,
         ComponentLookup<CarLane> carLaneLookup,
         ComponentLookup<Curve> curveLookup,
-        ComponentLookup<TrainTrack> trainTrackLookup
+        ComponentLookup<TrainTrack> trainTrackLookup,
+        ComponentLookup<SecondaryLane> secondaryLaneLookup
     )
     {
         NativeList<EdgeInfo> edgeInfoList = new(4, allocator);
@@ -71,9 +72,12 @@ public partial struct NodeUtils
                 LaneConnection laneConnection = GetLaneConnectionFromNodeSubLane(nodeSubLane.m_SubLane, laneConnectionMap, (nodePedestrianLane.m_Flags & PedestrianLaneFlags.Crosswalk) != 0);
                 if (laneConnection.m_SourceEdge == edgeEntity)
                 {
-                    if (!masterLaneLookup.HasComponent(nodeSubLane.m_SubLane))
+                    if (!masterLaneLookup.HasComponent(nodeSubLane.m_SubLane) && laneConnection.m_SourceSubLane != Entity.Null)
                     {
-                        SubLaneInfo sourceSubLaneInfo = subLaneMap[laneConnection.m_SourceSubLane];
+                        if (!subLaneMap.TryGetValue(laneConnection.m_SourceSubLane, out SubLaneInfo sourceSubLaneInfo))
+                        {
+                            sourceSubLaneInfo = default;
+                        }
                         sourceSubLaneInfo.m_SubLane = laneConnection.m_SourceSubLane;
                         sourceSubLaneInfo.m_Position = GetSubLanePosition(sourceSubLaneInfo.m_SubLane, curveLookup);
                         if (trackLaneLookup.TryGetComponent(nodeSubLane.m_SubLane, out var trackLane))
@@ -95,7 +99,13 @@ public partial struct NodeUtils
                             }
                             subLaneMap[laneConnection.m_SourceSubLane] = sourceSubLaneInfo;
                         }
-                        if (carLaneLookup.TryGetComponent(nodeSubLane.m_SubLane, out var nodeCarLane))
+                        if (secondaryLaneLookup.HasComponent(nodeSubLane.m_SubLane) || secondaryLaneLookup.HasComponent(laneConnection.m_SourceSubLane))
+                        {
+                            edgeInfo.m_BicycleLaneCount++;
+                            sourceSubLaneInfo.m_BicycleLaneCount++;
+                            subLaneMap[laneConnection.m_SourceSubLane] = sourceSubLaneInfo;
+                        }
+                        else if (carLaneLookup.TryGetComponent(nodeSubLane.m_SubLane, out var nodeCarLane))
                         {
                             carLaneLookup.TryGetComponent(laneConnection.m_SourceSubLane, out var edgeCarLane);
                             bool isPublicOnly = (edgeCarLane.m_Flags & CarLaneFlags.PublicOnly) != 0;
@@ -140,7 +150,10 @@ public partial struct NodeUtils
                         {
                             edgeInfo.m_PedestrianLaneNonStopLineCount++;
                         }
-                        SubLaneInfo subLaneInfo = subLaneMap[nodeSubLane.m_SubLane];
+                        if (!subLaneMap.TryGetValue(nodeSubLane.m_SubLane, out SubLaneInfo subLaneInfo))
+                        {
+                            subLaneInfo = default;
+                        }
                         subLaneInfo.m_SubLane = nodeSubLane.m_SubLane;
                         subLaneInfo.m_Position = GetSubLanePosition(subLaneInfo.m_SubLane, curveLookup);
                         subLaneInfo.m_PedestrianLaneCount++;
@@ -192,7 +205,8 @@ public partial struct NodeUtils
             uISystem.m_TypeHandle.m_TrackLane,
             uISystem.m_TypeHandle.m_CarLane,
             uISystem.m_TypeHandle.m_Curve,
-            uISystem.m_TypeHandle.m_TrainTrack
+            uISystem.m_TypeHandle.m_TrainTrack,
+            uISystem.m_TypeHandle.m_SecondaryLane
         );
     }
 
@@ -216,7 +230,8 @@ public partial struct NodeUtils
             job.m_ExtraTypeHandle.m_TrackLane,
             job.m_CarLaneData,
             job.m_CurveData,
-            job.m_ExtraTypeHandle.m_TrainTrack
+            job.m_ExtraTypeHandle.m_TrainTrack,
+            job.m_ExtraTypeHandle.m_SecondaryLane
         );
     }
 
@@ -324,11 +339,10 @@ public partial struct NodeUtils
 
     public static LaneConnection GetLaneConnectionFromNodeSubLane(Entity nodeSubLaneEntity, NativeHashMap<Entity, LaneConnection> laneConnectionMap, bool recursive)
     {
-        if (nodeSubLaneEntity == Entity.Null || !laneConnectionMap.ContainsKey(nodeSubLaneEntity))
+        if (nodeSubLaneEntity == Entity.Null || !laneConnectionMap.TryGetValue(nodeSubLaneEntity, out LaneConnection laneConnection))
         {
             return new LaneConnection();
         }
-        LaneConnection laneConnection = laneConnectionMap[nodeSubLaneEntity];
         if (recursive)
         {
             if (laneConnection.m_SourceSubLane != Entity.Null)
@@ -336,7 +350,10 @@ public partial struct NodeUtils
                 int depth = 0;
                 while (laneConnection.m_SourceEdge == Entity.Null)
                 {
-                    var nextLaneConnection = laneConnectionMap[laneConnection.m_SourceSubLane];
+                    if (!laneConnectionMap.TryGetValue(laneConnection.m_SourceSubLane, out var nextLaneConnection))
+                    {
+                        break;
+                    }
                     if (nextLaneConnection.m_SourceSubLane != Entity.Null)
                     {
                         laneConnection.m_SourceEdge = nextLaneConnection.m_SourceEdge;
@@ -357,7 +374,10 @@ public partial struct NodeUtils
                 int depth = 0;
                 while (laneConnection.m_DestEdge == Entity.Null)
                 {
-                    var nextLaneConnection = laneConnectionMap[laneConnection.m_DestSubLane];
+                    if (!laneConnectionMap.TryGetValue(laneConnection.m_DestSubLane, out var nextLaneConnection))
+                    {
+                        break;
+                    }
                     if (nextLaneConnection.m_DestSubLane != Entity.Null)
                     {
                         laneConnection.m_DestEdge = nextLaneConnection.m_DestEdge;

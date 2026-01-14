@@ -50,6 +50,9 @@ public struct TypeHandle
     [ReadOnly]
     public ComponentLookup<TrainTrack> m_TrainTrack;
 
+    [ReadOnly]
+    public ComponentLookup<SecondaryLane> m_SecondaryLane;
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AssignHandles(ref SystemState state)
     {
@@ -67,6 +70,7 @@ public struct TypeHandle
         m_CarLane = state.GetComponentLookup<CarLane>(true);
         m_Curve = state.GetComponentLookup<Curve>(true);
         m_TrainTrack = state.GetComponentLookup<TrainTrack>(true);
+        m_SecondaryLane = state.GetComponentLookup<SecondaryLane>(true);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -86,5 +90,6 @@ public struct TypeHandle
         m_CarLane.Update(system);
         m_Curve.Update(system);
         m_TrainTrack.Update(system);
+        m_SecondaryLane.Update(system);
     }
 }

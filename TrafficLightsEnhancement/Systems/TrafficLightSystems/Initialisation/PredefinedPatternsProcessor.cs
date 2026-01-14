@@ -86,7 +86,7 @@ public class PredefinedPatternsProcessor
             for (int j = 0; j < subLanes.Length; j++)
             {
                 Entity subLane = subLanes[j].m_SubLane;
-                if (laneConnectionMap[subLane].m_SourceEdge != edge)
+                if (!laneConnectionMap.TryGetValue(subLane, out var laneConnection) || laneConnection.m_SourceEdge != edge)
                 {
                     continue;
                 }
@@ -94,7 +94,7 @@ public class PredefinedPatternsProcessor
                 {
                     continue;
                 }
-                if (!job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane))
+                if (!job.m_CarLaneData.HasComponent(laneConnection.m_SourceSubLane))
                 {
                     continue;
                 }
@@ -116,7 +116,7 @@ public class PredefinedPatternsProcessor
             for (int j = 0; j < subLanes.Length; j++)
             {
                 Entity subLane = subLanes[j].m_SubLane;
-                if (laneConnectionMap[subLane].m_SourceEdge != edge)
+                if (!laneConnectionMap.TryGetValue(subLane, out var trackLaneConnection) || trackLaneConnection.m_SourceEdge != edge)
                 {
                     continue;
                 }
@@ -124,7 +124,7 @@ public class PredefinedPatternsProcessor
                 {
                     continue;
                 }
-                if (job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane))
+                if (job.m_CarLaneData.HasComponent(trackLaneConnection.m_SourceSubLane))
                 {
                     continue;
                 }
@@ -179,7 +179,10 @@ public class PredefinedPatternsProcessor
             {
                 continue;
             }
-            var laneConnection = laneConnectionMap[subLane];
+            if (!laneConnectionMap.TryGetValue(subLane, out var laneConnection))
+            {
+                continue;
+            }
             if (straightEdgeMap.ContainsKey(laneConnection.m_SourceEdge) || laneConnection.m_DestEdge == Entity.Null)
             {
                 continue;
@@ -191,7 +194,15 @@ public class PredefinedPatternsProcessor
         for (int i = 0; i < connectedEdges.Length; i++)
         {
             edgeArray[0] = connectedEdges[i].m_Edge;
-            edgeArray[1] = straightEdgeMap[edgeArray[0]];
+            Entity destEdge;
+            if (straightEdgeMap.TryGetValue(edgeArray[0], out destEdge))
+            {
+                edgeArray[1] = destEdge;
+            }
+            else
+            {
+                edgeArray[1] = Entity.Null;
+            }
             bool modified = false;
             foreach (Entity edge in edgeArray)
             {
@@ -205,7 +216,7 @@ public class PredefinedPatternsProcessor
                     Entity subLane = subLanes[j].m_SubLane;
                     bool isCarLane = job.m_CarLaneData.TryGetComponent(subLane, out var carLane);
                     bool isTrackLane = job.m_ExtraTypeHandle.m_TrackLane.TryGetComponent(subLane, out var trackLane);
-                    if (laneConnectionMap[subLane].m_SourceEdge != edge)
+                    if (!laneConnectionMap.TryGetValue(subLane, out var subLaneConnection) || subLaneConnection.m_SourceEdge != edge)
                     {
                         continue;
                     }
@@ -262,7 +273,7 @@ public class PredefinedPatternsProcessor
                     Entity subLane = subLanes[j].m_SubLane;
                     bool isCarLane = job.m_CarLaneData.TryGetComponent(subLane, out var carLane);
                     bool isTrackLane = job.m_ExtraTypeHandle.m_TrackLane.TryGetComponent(subLane, out var trackLane);
-                    if (laneConnectionMap[subLane].m_SourceEdge != edge)
+                    if (!laneConnectionMap.TryGetValue(subLane, out var turnLaneConnection) || turnLaneConnection.m_SourceEdge != edge)
                     {
                         continue;
                     }
@@ -338,11 +349,10 @@ public class PredefinedPatternsProcessor
             for (int j = 0; j < subLanes.Length; j++)
             {
                 Entity subLane = subLanes[j].m_SubLane;
-                if (laneConnectionMap[subLane].m_SourceEdge != edge) continue;
+                if (!laneConnectionMap.TryGetValue(subLane, out var conn1) || conn1.m_SourceEdge != edge) continue;
                 if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal)) continue;
-                if (!job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane)) continue;
+                if (!job.m_CarLaneData.TryGetComponent(conn1.m_SourceSubLane, out var carLane)) continue;
                         
-                var carLane = job.m_CarLaneData[laneConnectionMap[subLane].m_SourceSubLane];
                 bool isLeftTurn = job.m_LeftHandTraffic && 
                     (carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.GentleTurnLeft)) != 0;
                 bool isStraight = (carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.TurnRight | 
@@ -365,12 +375,11 @@ public class PredefinedPatternsProcessor
             for (int j = 0; j < subLanes.Length; j++)
             {
                 Entity subLane = subLanes[j].m_SubLane;
-                if (laneConnectionMap[subLane].m_SourceEdge != edge) continue;
+                if (!laneConnectionMap.TryGetValue(subLane, out var conn2) || conn2.m_SourceEdge != edge) continue;
                 if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal)) continue;
                 
-                if (job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane))
+                if (job.m_CarLaneData.TryGetComponent(conn2.m_SourceSubLane, out var carLane))
                 {
-                    var carLane = job.m_CarLaneData[laneConnectionMap[subLane].m_SourceSubLane];
                     bool isStraight = (carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.TurnRight | 
                         CarLaneFlags.GentleTurnLeft | CarLaneFlags.GentleTurnRight | CarLaneFlags.UTurnLeft | CarLaneFlags.UTurnRight)) == 0;
                             
@@ -398,11 +407,10 @@ public class PredefinedPatternsProcessor
             for (int j = 0; j < subLanes.Length; j++)
             {
                 Entity subLane = subLanes[j].m_SubLane;
-                if (laneConnectionMap[subLane].m_SourceEdge != edge) continue;
+                if (!laneConnectionMap.TryGetValue(subLane, out var conn3) || conn3.m_SourceEdge != edge) continue;
                 if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal)) continue;
-                if (!job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane)) continue;
+                if (!job.m_CarLaneData.TryGetComponent(conn3.m_SourceSubLane, out var carLane)) continue;
                         
-                var carLane = job.m_CarLaneData[laneConnectionMap[subLane].m_SourceSubLane];
                 bool isLeftTurn = job.m_LeftHandTraffic && 
                     (carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.GentleTurnLeft)) != 0;
                 bool isStraight = (carLane.m_Flags & (CarLaneFlags.TurnLeft | CarLaneFlags.TurnRight | 
@@ -425,10 +433,10 @@ public class PredefinedPatternsProcessor
             for (int j = 0; j < subLanes.Length; j++)
             {
                 Entity subLane = subLanes[j].m_SubLane;
-                if (laneConnectionMap[subLane].m_SourceEdge != edge) continue;
+                if (!laneConnectionMap.TryGetValue(subLane, out var conn4) || conn4.m_SourceEdge != edge) continue;
                 if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal)) continue;
                 
-                if (job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane))
+                if (job.m_CarLaneData.HasComponent(conn4.m_SourceSubLane))
                 {
                     laneSignal.m_GroupMask |= (ushort)(1 << groupCount);
                     job.m_LaneSignalData[subLane] = laneSignal;
@@ -450,9 +458,9 @@ public class PredefinedPatternsProcessor
             for (int j = 0; j < subLanes.Length; j++)
             {
                 Entity subLane = subLanes[j].m_SubLane;
-                if (laneConnectionMap[subLane].m_SourceEdge != edge) continue;
+                if (!laneConnectionMap.TryGetValue(subLane, out var trackConn) || trackConn.m_SourceEdge != edge) continue;
                 if (!job.m_LaneSignalData.TryGetComponent(subLane, out var laneSignal) || !job.m_ExtraTypeHandle.m_TrackLane.HasComponent(subLane)) continue;
-                if (job.m_CarLaneData.HasComponent(laneConnectionMap[subLane].m_SourceSubLane)) continue;
+                if (job.m_CarLaneData.HasComponent(trackConn.m_SourceSubLane)) continue;
                 
                 // Add track lanes to all phases
                 laneSignal.m_GroupMask |= (ushort)((1 << groupCount) - 1);
@@ -498,7 +506,11 @@ public class PredefinedPatternsProcessor
                     {
                         continue;
                     }
-                    if (laneConnectionMap[subLane].m_SourceSubLane == laneConnectionMap[overlapSubLane].m_SourceSubLane)
+                    if (!laneConnectionMap.TryGetValue(subLane, out var subLaneConn) || !laneConnectionMap.TryGetValue(overlapSubLane, out var overlapConn))
+                    {
+                        continue;
+                    }
+                    if (subLaneConn.m_SourceSubLane == overlapConn.m_SourceSubLane)
                     {
                         continue;
                     }
@@ -644,7 +656,11 @@ public class PredefinedPatternsProcessor
                     {
                         continue;
                     }
-                    if (subLaneConnection.m_SourceEdge == laneConnectionMap[overlapSubLane].m_DestEdge || subLaneConnection.m_DestEdge == laneConnectionMap[overlapSubLane].m_DestEdge)
+                    if (!laneConnectionMap.TryGetValue(overlapSubLane, out var overlapConnection))
+                    {
+                        continue;
+                    }
+                    if (subLaneConnection.m_SourceEdge == overlapConnection.m_DestEdge || subLaneConnection.m_DestEdge == overlapConnection.m_DestEdge)
                     {
                         if (job.m_LeftHandTraffic)
                         {

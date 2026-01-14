@@ -158,6 +158,7 @@ public struct CustomPhaseData : IBufferElementData, ISerializable
         reader.Read(out m_PublicCarLaneOccupied);
         reader.Read(out m_TrackLaneOccupied);
         reader.Read(out m_PedestrianLaneOccupied);
+        reader.Read(out m_BicycleLaneOccupied);
         reader.Read(out m_WeightedWaiting);
         reader.Read(out m_TargetDuration);
         reader.Read(out m_Priority);
