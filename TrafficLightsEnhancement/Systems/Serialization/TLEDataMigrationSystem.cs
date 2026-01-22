@@ -60,20 +60,73 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 return;
             }
 
-            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} validating data version {_version}...");
+            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} migrating data version {_version}...");
             _loaded = false;
+
+            bool regularValidationOnly = true;
+            int totalEntities = CountTotalEntities();
+
+            if (_version < TLEDataVersion.V1)
+            {
+                regularValidationOnly = false;
+                MigrateToV1();
+            }
+            else if (_version < TLEDataVersion.V2)
+            {
+                regularValidationOnly = false;
+                MigrateToV2();
+            }
+
+            int affectedCount = ValidateLoadedData();
+
+            CheckGroupsWithMissingPhases();
+
+            if (affectedCount > 0)
+            {
+                Mod.m_Log.Warn($"{nameof(TLEDataMigrationSystem)} found {affectedCount} affected entities of {totalEntities} total");
+                
+                var messageDialog = new MessageDialog(
+                    "Traffic Lights Enhancement - Data Migration",
+                    $"Traffic Lights Enhancement mod detected data from an older version.\n\n" +
+                    $"Found {affectedCount} of {totalEntities} entities that needed migration.\n\n" +
+                    "Some traffic light configurations may need to be reconfigured.",
+                    LocalizedString.Id("Common.OK"));
+                GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
+            }
+
+            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} {(regularValidationOnly ? "validating" : "migrating")} data version {_version} done. Found {affectedCount} affected entities of {totalEntities}");
+        }
+
+        private int CountTotalEntities()
+        {
+            int total = 0;
+            if (!_extraLaneSignalQuery.IsEmptyIgnoreFilter)
+                total += _extraLaneSignalQuery.CalculateEntityCount();
+            if (!_customTrafficLightsQuery.IsEmptyIgnoreFilter)
+                total += _customTrafficLightsQuery.CalculateEntityCount();
+            if (!_trafficGroupQuery.IsEmptyIgnoreFilter)
+                total += _trafficGroupQuery.CalculateEntityCount();
+            if (!_trafficGroupMemberQuery.IsEmptyIgnoreFilter)
+                total += _trafficGroupMemberQuery.CalculateEntityCount();
+            if (!_edgeGroupMaskQuery.IsEmptyIgnoreFilter)
+                total += _edgeGroupMaskQuery.CalculateEntityCount();
+            if (!_customPhaseDataQuery.IsEmptyIgnoreFilter)
+                total += _customPhaseDataQuery.CalculateEntityCount();
+            return total;
+        }
+
+        private int ValidateLoadedData()
+        {
+            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} preparing validation job, data version: {_version}");
 
             var invalidEntities = new NativeQueue<Entity>(Allocator.TempJob);
             var commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
             var entityStorageInfoLookup = GetEntityStorageInfoLookup();
 
-            int totalEntities = 0;
             JobHandle jobHandle = default;
 
-            
             if (!_extraLaneSignalQuery.IsEmptyIgnoreFilter)
             {
-                totalEntities += _extraLaneSignalQuery.CalculateEntityCount();
                 var extraLaneSignalJob = new ValidateExtraLaneSignalJob
                 {
                     entityTypeHandle = GetEntityTypeHandle(),
@@ -86,10 +139,8 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = extraLaneSignalJob.ScheduleParallel(_extraLaneSignalQuery, jobHandle);
             }
 
-            
             if (!_customTrafficLightsQuery.IsEmptyIgnoreFilter)
             {
-                totalEntities += _customTrafficLightsQuery.CalculateEntityCount();
                 var customTrafficLightsJob = new ValidateCustomTrafficLightsJob
                 {
                     entityTypeHandle = GetEntityTypeHandle(),
@@ -102,10 +153,8 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = customTrafficLightsJob.ScheduleParallel(_customTrafficLightsQuery, jobHandle);
             }
 
-            
             if (!_trafficGroupQuery.IsEmptyIgnoreFilter)
             {
-                totalEntities += _trafficGroupQuery.CalculateEntityCount();
                 var trafficGroupJob = new ValidateTrafficGroupJob
                 {
                     entityTypeHandle = GetEntityTypeHandle(),
@@ -115,10 +164,8 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = trafficGroupJob.ScheduleParallel(_trafficGroupQuery, jobHandle);
             }
 
-            
             if (!_trafficGroupMemberQuery.IsEmptyIgnoreFilter)
             {
-                totalEntities += _trafficGroupMemberQuery.CalculateEntityCount();
                 var trafficGroupMemberJob = new ValidateTrafficGroupMemberJob
                 {
                     entityTypeHandle = GetEntityTypeHandle(),
@@ -131,10 +178,8 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = trafficGroupMemberJob.ScheduleParallel(_trafficGroupMemberQuery, jobHandle);
             }
 
-            
             if (!_edgeGroupMaskQuery.IsEmptyIgnoreFilter)
             {
-                totalEntities += _edgeGroupMaskQuery.CalculateEntityCount();
                 var edgeGroupMaskJob = new ValidateEdgeGroupMaskJob
                 {
                     entityTypeHandle = GetEntityTypeHandle(),
@@ -147,10 +192,8 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = edgeGroupMaskJob.ScheduleParallel(_edgeGroupMaskQuery, jobHandle);
             }
 
-            
             if (!_customPhaseDataQuery.IsEmptyIgnoreFilter)
             {
-                totalEntities += _customPhaseDataQuery.CalculateEntityCount();
                 var customPhaseDataJob = new ValidateCustomPhaseDataJob
                 {
                     entityTypeHandle = GetEntityTypeHandle(),
@@ -160,45 +203,26 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = customPhaseDataJob.ScheduleParallel(_customPhaseDataQuery, jobHandle);
             }
 
-            
             jobHandle.Complete();
-
-            
             commandBuffer.Playback(EntityManager);
             commandBuffer.Dispose();
 
-            
             int affectedCount = invalidEntities.Count;
             invalidEntities.Dispose();
 
-            
-            if (_version < TLEDataVersion.V2)
-            {
-                MigrateTrafficGroupMembers();
-            }
+            return affectedCount;
+        }
 
-            if (_version < TLEDataVersion.V1)
-            {
-                MigrateSignalDelayData();
-            }
+        private void MigrateToV1()
+        {
+            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} preparing migration to V1, data version: {_version}");
+            MigrateSignalDelayData();
+        }
 
-            if (affectedCount > 0)
-            {
-                Mod.m_Log.Warn($"{nameof(TLEDataMigrationSystem)} found {affectedCount} affected entities of {totalEntities} total");
-                
-                var messageDialog = new MessageDialog(
-                    "Traffic Lights Enhancement - Data Migration",
-                    $"Traffic Lights Enhancement mod detected data from an older version.\n\n" +
-                    $"Migrated {affectedCount} of {totalEntities} entities.\n\n" +
-                    "Some traffic light configurations may need to be reconfigured.",
-                    LocalizedString.Id("Common.OK"));
-                GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
-            }
-
-            
-            CheckGroupsWithMissingPhases();
-
-            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} migration complete. Version {_version} -> {TLEDataVersion.Current}");
+        private void MigrateToV2()
+        {
+            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} preparing migration to V2, data version: {_version}");
+            MigrateTrafficGroupMembers();
         }
 
         private void MigrateTrafficGroupMembers()
@@ -518,7 +542,8 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
     {
         public const int V1 = 1;
         public const int V2 = 2;
+        public const int V3 = 3;
         
-        public const int Current = V2;
+        public const int Current = V3;
     }
 }

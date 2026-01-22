@@ -121,6 +121,7 @@ export interface MainPanelItemCustomPhase {
   waitFlowBalance: number,
   
   trafficLightMode: number,
+  smartPhaseSelection: boolean,
   
   carActive: boolean;
   publicCarActive: boolean;

@@ -227,13 +227,13 @@ public partial class PatchedTrafficLightInitializationSystem : Game.GameSystemBa
                     {
                         defaultPattern |= (uint) CustomTrafficLights.Patterns.ExclusivePedestrian;
                     }
-                    customTrafficLights.SetPattern(defaultPattern);
+                    customTrafficLights.SetLegacyPattern(defaultPattern);
                 }
                 customTrafficLights.SetPedestrianPhaseGroupMask(0);
 
                 if ((trafficLights.m_Flags & TrafficLightFlags.MoveableBridge) != 0)
                 {
-                    customTrafficLights.SetPattern(CustomTrafficLights.Patterns.Vanilla);
+                    customTrafficLights.SetLegacyPattern((uint)CustomTrafficLights.Patterns.Vanilla);
                 }
 
                 PredefinedPatternsProcessor.ResetExtraLaneSignal(ref this, subLanes, ref trafficLights);
@@ -245,21 +245,20 @@ public partial class PatchedTrafficLightInitializationSystem : Game.GameSystemBa
                 else
                 {
                     var edgeInfoArray = NodeUtils.GetEdgeInfoList(Allocator.Temp, entityArray[i], ref this, subLanes, connectedEdgeAccessor[i], edgeGroupMaskAccessor[i], subLaneGroupMaskAccessor[i]).AsArray();
-                    var pattern = customTrafficLights.GetPattern();
+                    var pattern = customTrafficLights.GetLegacyPattern();
                     if (NodeUtils.HasTrainTrack(edgeInfoArray) || !PredefinedPatternsProcessor.IsValidPattern(edgeInfoArray, pattern))
                     {
-                        pattern = CustomTrafficLights.Patterns.Vanilla;
-                        customTrafficLights.SetPattern(pattern);
+                        customTrafficLights.SetLegacyPattern((uint)CustomTrafficLights.Patterns.Vanilla);
                     }
-                    if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.SplitPhasing)
+                    if ((customTrafficLights.GetLegacyPattern() & CustomTrafficLights.Patterns.SplitPhasing) != 0)
                     {
                         PredefinedPatternsProcessor.SetupSplitPhasing(ref this, connectedEdgeAccessor[i], subLanes, out groupCount, ref trafficLights);
                     }
-                    else if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.ProtectedCentreTurn)
+                    else if ((customTrafficLights.GetLegacyPattern() & CustomTrafficLights.Patterns.ProtectedCentreTurn) != 0)
                     {
                         PredefinedPatternsProcessor.SetupProtectedCentreTurn(ref this, connectedEdgeAccessor[i], subLanes, out groupCount, ref trafficLights);
                     }
-                    else if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.SplitPhasingProtectedLeft)
+                    else if ((customTrafficLights.GetLegacyPattern() & CustomTrafficLights.Patterns.SplitPhasingProtectedLeft) != 0)
                     {
                         PredefinedPatternsProcessor.SetupSplitPhasingProtectedLeft(ref this, connectedEdgeAccessor[i], subLanes, out groupCount, ref trafficLights);
                     }
@@ -278,15 +277,15 @@ public partial class PatchedTrafficLightInitializationSystem : Game.GameSystemBa
                         InitializeTrafficLights(subLanes, groups, groupCount, flag, flag2, ref trafficLights);
                         groups.Clear();
                     }
-                    if ((customTrafficLights.GetPattern() & CustomTrafficLights.Patterns.AlwaysGreenKerbsideTurn) != 0)
+                    if ((customTrafficLights.GetLegacyPattern() & CustomTrafficLights.Patterns.AlwaysGreenKerbsideTurn) != 0)
                     {
                         PredefinedPatternsProcessor.AddAlwaysGreenKerbsideTurn(ref this, unfilteredChunkIndex, subLanes, ref groupCount, ref trafficLights);
                     }
-                    if ((customTrafficLights.GetPattern() & CustomTrafficLights.Patterns.CentreTurnGiveWay) != 0)
+                    if ((customTrafficLights.GetLegacyPattern() & CustomTrafficLights.Patterns.CentreTurnGiveWay) != 0)
                     {
                         PredefinedPatternsProcessor.AddCentreTurnGiveWay(ref this, unfilteredChunkIndex, subLanes, ref trafficLights);
                     }
-                    if ((customTrafficLights.GetPattern() & CustomTrafficLights.Patterns.ExclusivePedestrian) != 0)
+                    if ((customTrafficLights.GetLegacyPattern() & CustomTrafficLights.Patterns.ExclusivePedestrian) != 0)
                     {
                         PredefinedPatternsProcessor.AddExclusivePedestrianPhase(ref this, subLanes, ref groupCount, ref trafficLights, ref customTrafficLights);
                     }

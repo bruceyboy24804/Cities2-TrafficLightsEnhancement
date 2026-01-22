@@ -22,7 +22,7 @@ public partial class SimulationUpdateSystem : GameSystemBase
     {
         if (m_UISystem.m_SelectedEntity != Entity.Null && EntityManager.TryGetSharedComponent<UpdateFrame>(m_UISystem.m_SelectedEntity, out var updateFrame))
         {
-            if (updateFrame.m_Index == SimulationUtils.GetUpdateFrameWithInterval(m_SimulationSystem.frameIndex, 4, 16))
+            if (updateFrame.m_Index == SimulationUtils.GetUpdateFrameWithInterval(m_SimulationSystem.frameIndex, 2, 16))
             {
                 m_UISystem.SimulationUpdate();
             }

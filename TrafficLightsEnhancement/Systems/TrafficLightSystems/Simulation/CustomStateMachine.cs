@@ -59,97 +59,33 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
                 }
                 customTrafficLights.m_Timer++;
                 CustomPhaseData phase = customPhaseDataBuffer[currentSignalIndex];
-                bool preferChange = false;
                 
-                if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed)
-                {
-                    float flow = phase.AverageCarFlow();
-                    float wait = phase.m_WeightedWaiting * phase.m_WaitFlowBalance;
-                    
-                    if (customTrafficLights.m_Timer >= phase.m_MaximumDuration)
-                    {
-                        preferChange = true;
-                    }
-                    else if (customTrafficLights.m_Timer > phase.m_MinimumDuration)
-                    {
-                        bool metricSaysChange = ShouldChangeByMetric(phase.m_ChangeMetric, flow, wait);
-                        if (metricSaysChange)
-                        {
-                            preferChange = true;
-                        }
-                    }
-                }
-                else
-                {
-                    float flow = phase.AverageCarFlow();
-                    float wait = phase.m_WeightedWaiting * phase.m_WaitFlowBalance;
-                    float targetDuration = 10f * (flow + (float)(phase.m_TrackLaneOccupied * 0.5)) * phase.m_TargetDurationMultiplier;
-                    phase.m_TargetDuration = targetDuration;
-                    
-                    if (customTrafficLights.m_Timer <= phase.m_MinimumDuration)
-                    {
-                        phase.m_LowFlowTimer = 0;
-                        phase.m_LowPriorityTimer = 0;
-                    }
-                    else if (customTrafficLights.m_Timer >= phase.m_MaximumDuration)
-                    {
-                        preferChange = true;
-                    }
-                    else
-                    {
-                        bool metricSaysChange = ShouldChangeByMetric(phase.m_ChangeMetric, flow, wait);
-                        
-                        if (metricSaysChange)
-                        {
-                            if (phase.m_Priority > 0 && phase.m_Priority >= MaxPriority(customPhaseDataBuffer))
-                            {
-                                if (customTrafficLights.m_Timer <= targetDuration)
-                                {
-                                    phase.m_LowFlowTimer = 0;
-                                }
-                                else if (phase.m_LowFlowTimer < 3)
-                                {
-                                    phase.m_LowFlowTimer++;
-                                }
-                                else
-                                {
-                                    preferChange = true;
-                                }
-                                phase.m_LowPriorityTimer = 0;
-                            }
-                            else if (phase.m_Priority < MaxPriority(customPhaseDataBuffer))
-                            {
-                                if (phase.m_LowPriorityTimer >= 1)
-                                {
-                                    preferChange = true;
-                                }
-                                phase.m_LowPriorityTimer++;
-                            }
-                            else
-                            {
-                                preferChange = true;
-                            }
-                        }
-                        else
-                        {
-                            phase.m_LowFlowTimer = 0;
-                            phase.m_LowPriorityTimer = 0;
-                        }
-                    }
-                    
-                    if ((phase.m_Options & CustomPhaseData.Options.EndPhasePrematurely) != 0)
-                    {
-                        preferChange = true;
-                    }
-                }
+                bool stepDone = ShouldChangeStep(
+                    ref phase,
+                    customPhaseDataBuffer,
+                    currentSignalIndex,
+                    customTrafficLights.m_Timer,
+                    customTrafficLights,
+                    out float flow,
+                    out float wait
+                );
+                
+                phase.m_CurrentFlow = flow;
+                phase.m_CurrentWait = wait;
                 
                 if (customTrafficLights.m_ManualSignalGroup > 0 && customTrafficLights.m_ManualSignalGroup != trafficLights.m_CurrentSignalGroup)
                 {
-                    preferChange = true;
+                    stepDone = true;
                 }
+                
+                if ((phase.m_Options & CustomPhaseData.Options.EndPhasePrematurely) != 0)
+                {
+                    stepDone = true;
+                }
+                
                 customPhaseDataBuffer[currentSignalIndex] = phase;
                 byte nextGroup = GetNextSignalGroup(trafficLights.m_CurrentSignalGroup, customPhaseDataBuffer, customTrafficLights, out var linked);
-                if (preferChange && nextGroup != trafficLights.m_CurrentSignalGroup)
+                if (stepDone && nextGroup != trafficLights.m_CurrentSignalGroup)
                 {
                     trafficLights.m_State = TrafficLightState.Ending;
                     trafficLights.m_NextSignalGroup = nextGroup;
@@ -248,7 +184,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
                 if (group < customPhaseDataBuffer.Length && diffFrame > 0)
                 {
                     CustomPhaseData customPhaseData = customPhaseDataBuffer[group];
-                    float totalDiff = math. abs(Max(diffDistance)) + math.abs(Max(diffDuration));
+                    float totalDiff = math.abs(Max(diffDistance)) + math.abs(Max(diffDuration));
                     customPhaseData.m_CarFlow.x += totalDiff * (64f / (float)diffFrame); 
                     customPhaseDataBuffer[group] = customPhaseData;
                 }
@@ -362,17 +298,27 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
             {
                 return customTrafficLights.m_ManualSignalGroup;
             }
-            if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed && customPhaseDataBuffer.Length > 0)
+            if (customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed && customPhaseDataBuffer.Length > 0)
             {
                 int currentStep = currentGroup - 1;
                 if (currentStep < 0) currentStep = 0;
                 
-                int bestStep = CalculateBestNextStep(customPhaseDataBuffer, currentStep, out bool shouldRestart);
-                if (shouldRestart)
+                bool useSmartSelection = (customTrafficLights.GetOptions() & CustomTrafficLights.TrafficOptions.SmartPhaseSelection) != 0;
+                
+                if (useSmartSelection)
                 {
-                    return currentGroup;
+                    int bestStep = CalculateBestNextStep(customPhaseDataBuffer, currentStep, out bool shouldRestart);
+                    if (shouldRestart)
+                    {
+                        return currentGroup;
+                    }
+                    return (byte)(bestStep + 1);
                 }
-                return (byte)(bestStep + 1);
+                else
+                {
+                    int nextStep = (currentStep + 1) % customPhaseDataBuffer.Length;
+                    return (byte)(nextStep + 1);
+                }
             }
             for (int i = 0; i < customPhaseDataBuffer.Length; i++)
             {
@@ -439,7 +385,108 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
             return max;
         }
 
-        
+        private static float MaxOtherPhasesWaiting(DynamicBuffer<CustomPhaseData> customPhaseDataBuffer, int currentPhaseIndex)
+        {
+            float max = 0f;
+            for (int i = 0; i < customPhaseDataBuffer.Length; i++)
+            {
+                if (i != currentPhaseIndex)
+                {
+                    var phase = customPhaseDataBuffer[i];
+                    float waiting = phase.m_WeightedWaiting;
+                    if (waiting <= 0f && phase.m_TurnsSinceLastRun > 0)
+                    {
+                        waiting = phase.WeightedLaneOccupied();
+                    }
+                    max = math.max(max, waiting);
+                }
+            }
+            return max;
+        }
+
+        private static bool ShouldChangeStep(
+            ref CustomPhaseData phase,
+            DynamicBuffer<CustomPhaseData> customPhaseDataBuffer,
+            int currentPhaseIndex,
+            uint timer,
+            CustomTrafficLights customTrafficLights,
+            out float flow,
+            out float wait)
+        {
+            flow = phase.AverageCarFlow();
+            
+            if (customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed)
+            {
+                wait = MaxOtherPhasesWaiting(customPhaseDataBuffer, currentPhaseIndex) * phase.m_WaitFlowBalance;
+                
+                if (timer >= phase.m_MaximumDuration)
+                {
+                    return true;
+                }
+                if (timer > phase.m_MinimumDuration)
+                {
+                    return ShouldChangeByMetric(phase.m_ChangeMetric, flow, wait);
+                }
+                return false;
+            }
+            else
+            {
+                wait = MaxOtherPhasesWaiting(customPhaseDataBuffer, currentPhaseIndex) * phase.m_WaitFlowBalance;
+                float targetDuration = 10f * (flow + (float)(phase.m_TrackLaneOccupied * 0.5)) * phase.m_TargetDurationMultiplier;
+                phase.m_TargetDuration = targetDuration;
+                
+                if (timer <= phase.m_MinimumDuration)
+                {
+                    phase.m_LowFlowTimer = 0;
+                    phase.m_LowPriorityTimer = 0;
+                    return false;
+                }
+                
+                if (timer >= phase.m_MaximumDuration)
+                {
+                    return true;
+                }
+                
+                bool metricSaysChange = ShouldChangeByMetric(phase.m_ChangeMetric, flow, wait);
+                
+                if (!metricSaysChange)
+                {
+                    phase.m_LowFlowTimer = 0;
+                    phase.m_LowPriorityTimer = 0;
+                    return false;
+                }
+                
+                int maxPriority = MaxPriority(customPhaseDataBuffer);
+                
+                if (phase.m_Priority > 0 && phase.m_Priority >= maxPriority)
+                {
+                    if (timer <= targetDuration)
+                    {
+                        phase.m_LowFlowTimer = 0;
+                        return false;
+                    }
+                    else if (phase.m_LowFlowTimer < 3)
+                    {
+                        phase.m_LowFlowTimer++;
+                        return false;
+                    }
+                    phase.m_LowPriorityTimer = 0;
+                    return true;
+                }
+                else if (phase.m_Priority < maxPriority)
+                {
+                    if (phase.m_LowPriorityTimer >= 1)
+                    {
+                        return true;
+                    }
+                    phase.m_LowPriorityTimer++;
+                    return false;
+                }
+                
+                return true;
+            }
+        }
+
         public static int CalculateBestNextStep(DynamicBuffer<CustomPhaseData> customPhaseDataBuffer, int currentStep, out bool shouldRestartCurrent)
         {
             shouldRestartCurrent = false;

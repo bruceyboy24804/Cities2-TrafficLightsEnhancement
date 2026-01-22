@@ -30,7 +30,7 @@ public struct ExtraLaneSignal : IComponentData, IQueryTypeParameter, ISerializab
         reader.Read(out int version);
         
         
-        if (version == 1)
+        if (version < TLEDataVersion.V2)
         {
             reader.Read(out uint flags);
             if ((flags & 1U) > 0U)
@@ -38,17 +38,15 @@ public struct ExtraLaneSignal : IComponentData, IQueryTypeParameter, ISerializab
             if ((flags & 2U) > 0U)
                 m_IgnorePriorityGroupMask = ushort.MaxValue;
         }
-        
-        
-        if (version >= TLEDataVersion.V2)
+        else if (version < 3)
         {
             reader.Read(out m_YieldGroupMask);
             reader.Read(out m_IgnorePriorityGroupMask);
         }
-        
-        
-        if (version >= 3)
+        else
         {
+            reader.Read(out m_YieldGroupMask);
+            reader.Read(out m_IgnorePriorityGroupMask);
             reader.Read(out m_SourceSubLane);
         }
     }

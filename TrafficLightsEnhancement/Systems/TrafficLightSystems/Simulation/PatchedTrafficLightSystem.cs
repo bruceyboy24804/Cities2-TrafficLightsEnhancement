@@ -138,7 +138,7 @@ public partial class PatchedTrafficLightSystem : GameSystemBase
 
                 CustomTrafficLights customTrafficLights = i < customTrafficLightsArray.Length ? customTrafficLightsArray[i] : new CustomTrafficLights();
 
-                if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase && i < customPhaseDataBufferAccessor.Length && (trafficLights.m_Flags & TrafficLightFlags.MoveableBridge) == 0)
+                if ((customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase || customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed) && i < customPhaseDataBufferAccessor.Length && (trafficLights.m_Flags & TrafficLightFlags.MoveableBridge) == 0)
                 {
                     DynamicBuffer<CustomPhaseData> customPhaseDataBuffer = customPhaseDataBufferAccessor[i];
                     CustomStateMachine.CalculatePriority(this, subLanes, customPhaseDataBuffer);

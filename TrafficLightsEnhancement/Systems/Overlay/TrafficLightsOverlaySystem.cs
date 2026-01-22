@@ -155,6 +155,17 @@ public partial class TrafficLightsOverlaySystem : GameSystemBase
 	{
 		if (EntityManager.TryGetBuffer<SubLane>(entity, true, out var subLaneBuffer))
 		{
+			// Check if traffic light is in an active state that allows flow
+			// But bypass this check when in custom phase editor (showUncovered = true)
+			bool isTrafficLightActive = true;
+			if (!showUncovered && EntityManager.TryGetComponent<TrafficLights>(entity, out var trafficLights))
+			{
+				isTrafficLightActive = trafficLights.m_State == TrafficLightState.Ongoing 
+					|| trafficLights.m_State == TrafficLightState.Beginning
+					|| trafficLights.m_State == TrafficLightState.Extending
+					|| trafficLights.m_State == TrafficLightState.Extended;
+			}
+			
 			foreach (var subLane in subLaneBuffer)
 			{
 				Entity subLaneEntity = subLane.m_SubLane;
@@ -180,10 +191,11 @@ public partial class TrafficLightsOverlaySystem : GameSystemBase
 						continue;
 					}
 					
-					Color color = Color.green;
+					// Only show green flow if traffic light is active and lane signal matches display index
+					Color color = isTrafficLightActive ? Color.green : new Color(1f, 0.5f, 0f, 1f ); // orange when inactive
 					if (EntityManager.TryGetComponent<ExtraLaneSignal>(subLaneEntity, out var extraLaneSignal) && (extraLaneSignal.m_YieldGroupMask & 1 << displayIndex) != 0)
 					{
-						color = Color.blue;
+						color = isTrafficLightActive ? Color.blue : new Color(0.3f, 0.3f, 0.8f, 1f); // Dimmed blue when inactive
 					}
 					if ((laneSignal.m_GroupMask & 1 << displayIndex) != 0)
 					{

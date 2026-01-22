@@ -121,6 +121,8 @@ public class LocalisationUtils
         dictionary.Add(Mod.m_Settings.GetOptionLabelLocaleID("m_DefaultAlwaysGreenKerbsideTurn"), this.GetString("DefaultAlwaysGreenKerbsideTurnLabel"));
         dictionary.Add(Mod.m_Settings.GetOptionLabelLocaleID("m_DefaultExclusivePedestrian"), this.GetString("DefaultExclusivePedestrianLabel"));
         dictionary.Add(Mod.m_Settings.GetOptionLabelLocaleID("m_ForceNodeUpdate"), this.GetString("ForceAllNodesUpdateLabel"));
+        dictionary.Add(Mod.m_Settings.GetOptionLabelLocaleID("m_ComponentTypeToClear"), this.GetString("ComponentTypeToClearLabel"));
+        dictionary.Add(Mod.m_Settings.GetOptionLabelLocaleID("m_ClearSelectedComponent"), this.GetString("ClearSelectedComponentLabel"));
         dictionary.Add(Mod.m_Settings.GetOptionLabelLocaleID("m_ReleaseChannel"), this.GetString("ReleaseChannel"));
         dictionary.Add(Mod.m_Settings.GetOptionLabelLocaleID("m_TleVersion"), Mod.m_Id);
         dictionary.Add(Mod.m_Settings.GetOptionLabelLocaleID("m_LaneSystemVersion"), C2VM.CommonLibraries.LaneSystem.Mod.m_Id);
@@ -133,6 +135,8 @@ public class LocalisationUtils
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_DefaultAlwaysGreenKerbsideTurn"), this.GetString("DefaultAlwaysGreenKerbsideTurnDesc"));
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_DefaultExclusivePedestrian"), this.GetString("DefaultExclusivePedestrianDesc"));
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_ForceNodeUpdate"), this.GetString("ForceAllNodesUpdateDesc"));
+        dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_ComponentTypeToClear"), this.GetString("ComponentTypeToClearDesc"));
+        dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_ClearSelectedComponent"), this.GetString("ClearSelectedComponentDesc"));
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_ReleaseChannel"), Mod.m_Settings.m_ReleaseChannel);
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_TleVersion"), Mod.InformationalVersion);
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_LaneSystemVersion"), C2VM.CommonLibraries.LaneSystem.Mod.m_InformationalVersion);
@@ -140,6 +144,7 @@ public class LocalisationUtils
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_MainPanelToggleKeyboardBinding"), this.GetString("MainPanelToggleKeyboardBindingDesc"));
         dictionary.Add(Mod.m_Settings.GetOptionDescLocaleID("m_ResetBindings"), this.GetString("ResetBindingsDesc"));
         dictionary.Add(Mod.m_Settings.GetOptionWarningLocaleID("m_ForceNodeUpdate"), this.GetString("ForceAllNodesUpdateWarning"));
+        dictionary.Add(Mod.m_Settings.GetOptionWarningLocaleID("m_ClearSelectedComponent"), this.GetString("ClearSelectedComponentWarning"));
         dictionary.Add(Mod.m_Settings.GetOptionWarningLocaleID("m_SuppressCanaryWarning"), this.GetString("SuppressCanaryWarningDesc"));
         dictionary.Add(Mod.m_Settings.GetOptionWarningLocaleID("m_ResetBindings"), this.GetString("ResetBindingsDesc"));
         dictionary.Add("C2VM.TLE.Tooltips.Configure", this.GetString("TooltipConfigure"));

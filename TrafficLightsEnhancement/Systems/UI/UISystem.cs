@@ -110,8 +110,8 @@ public partial class UISystem: ExtendedUISystemBase
         SetupKeyBindings();
         UpdateLocale();
         
+        UserPresetsManager.Initialize();
         
-
         GameManager.instance.localizationManager.onActiveDictionaryChanged += UpdateLocale;
         
     }
@@ -275,7 +275,7 @@ public partial class UISystem: ExtendedUISystemBase
                     var customTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(m_SelectedEntity);
                     m_CustomTrafficLights.m_Timer = customTrafficLights.m_Timer;
                 }
-                EntityManager.SetComponentData<CustomTrafficLights>(m_SelectedEntity, m_CustomTrafficLights);
+                EntityManager.SetComponentData(m_SelectedEntity, m_CustomTrafficLights);
             }
 
             if (!EntityManager.HasComponent<Game.Net.TrafficLights>(m_SelectedEntity))

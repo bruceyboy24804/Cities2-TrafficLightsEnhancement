@@ -81,7 +81,7 @@ public struct IntelligentPhaseGenerator
 			{
 				m_MinimumDuration = 10,
 				m_TargetDuration = 30,
-				m_MaximumDuration = 60,
+				m_MaximumDuration = 20,
 				m_Priority = 1,
 				m_TargetDurationMultiplier = 1f
 			};
@@ -184,7 +184,7 @@ public struct IntelligentPhaseGenerator
 			{
 				m_MinimumDuration = 10,
 				m_TargetDuration = 30,
-				m_MaximumDuration = 60,
+				m_MaximumDuration = 20,
 				m_Priority = 1,
 				m_TargetDurationMultiplier = 1f
 			};
@@ -271,7 +271,7 @@ public struct IntelligentPhaseGenerator
 			{
 				m_MinimumDuration = (ushort)(i % 2 == 0 ? 10 : 8),
 				m_TargetDuration = (ushort)(i % 2 == 0 ? 30 : 15),
-				m_MaximumDuration = (ushort)(i % 2 == 0 ? 60 : 30),
+				m_MaximumDuration = 20,
 				m_Priority = 1,
 				m_TargetDurationMultiplier = 1f
 			};

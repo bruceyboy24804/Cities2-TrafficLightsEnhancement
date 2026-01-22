@@ -150,53 +150,95 @@ public struct CustomPhaseData : IBufferElementData, ISerializable
         Initialisation();
         
         reader.Read(out ushort version);
-        reader.Read(out m_TurnsSinceLastRun);
-        reader.Read(out m_LowFlowTimer);
-        reader.Read(out m_LowPriorityTimer);
-        reader.Read(out m_CarFlow);
-        reader.Read(out m_CarLaneOccupied);
-        reader.Read(out m_PublicCarLaneOccupied);
-        reader.Read(out m_TrackLaneOccupied);
-        reader.Read(out m_PedestrianLaneOccupied);
-        reader.Read(out m_BicycleLaneOccupied);
-        reader.Read(out m_WeightedWaiting);
-        reader.Read(out m_TargetDuration);
-        reader.Read(out m_Priority);
-        reader.Read(out uint options);
-        reader.Read(out m_MinimumDuration);
-        reader.Read(out m_MaximumDuration);
-        reader.Read(out m_TargetDurationMultiplier);
-        reader.Read(out m_LaneOccupiedMultiplier);
-        reader.Read(out m_IntervalExponent);
-        m_Options = (Options)options;
         
-        if (version < TLEDataVersion.V2)
-            return;
-        
-        reader.Read(out byte changeMetric);
-        m_ChangeMetric = (StepChangeMetric)changeMetric;
-        reader.Read(out m_WaitFlowBalance);
-        reader.Read(out m_CarOpenDelay);
-        reader.Read(out m_CarCloseDelay);
-        reader.Read(out m_PublicCarOpenDelay);
-        reader.Read(out m_PublicCarCloseDelay);
-        reader.Read(out m_TrackOpenDelay);
-        reader.Read(out m_TrackCloseDelay);
-        reader.Read(out m_PedestrianOpenDelay);
-        reader.Read(out m_PedestrianCloseDelay);
-        reader.Read(out m_BicycleOpenDelay);
-        reader.Read(out m_BicycleCloseDelay);
-        reader.Read(out m_CarWeight);
-        reader.Read(out m_PublicCarWeight);
-        reader.Read(out m_TrackWeight);
-        reader.Read(out m_PedestrianWeight);
-        reader.Read(out m_BicycleWeight);
-        reader.Read(out m_FlowRatio);
-        reader.Read(out m_WaitRatio);
-        reader.Read(out m_SmoothingFactor);
-        reader.Read(out m_NextStepRefIndex);
-        reader.Read(out m_CurrentFlow);
-        reader.Read(out m_CurrentWait);
+        if (version < TLEDataVersion.V1)
+        {
+            m_TurnsSinceLastRun = version;
+            reader.Read(out m_LowFlowTimer);
+            reader.Read(out m_LowPriorityTimer);
+            reader.Read(out m_CarFlow);
+            reader.Read(out m_CarLaneOccupied);
+            reader.Read(out m_PublicCarLaneOccupied);
+            reader.Read(out m_TrackLaneOccupied);
+            reader.Read(out m_PedestrianLaneOccupied);
+            reader.Read(out m_WeightedWaiting);
+            reader.Read(out m_TargetDuration);
+            reader.Read(out m_Priority);
+            reader.Read(out uint options);
+            m_Options = (Options)options;
+            reader.Read(out m_MinimumDuration);
+            reader.Read(out m_MaximumDuration);
+            reader.Read(out m_TargetDurationMultiplier);
+            reader.Read(out m_LaneOccupiedMultiplier);
+            reader.Read(out m_IntervalExponent);
+        }
+        else if (version < TLEDataVersion.V2)
+        {
+            reader.Read(out m_TurnsSinceLastRun);
+            reader.Read(out m_LowFlowTimer);
+            reader.Read(out m_LowPriorityTimer);
+            reader.Read(out m_CarFlow);
+            reader.Read(out m_CarLaneOccupied);
+            reader.Read(out m_PublicCarLaneOccupied);
+            reader.Read(out m_TrackLaneOccupied);
+            reader.Read(out m_PedestrianLaneOccupied);
+            reader.Read(out m_WeightedWaiting);
+            reader.Read(out m_TargetDuration);
+            reader.Read(out m_Priority);
+            reader.Read(out uint options);
+            m_Options = (Options)options;
+            reader.Read(out m_MinimumDuration);
+            reader.Read(out m_MaximumDuration);
+            reader.Read(out m_TargetDurationMultiplier);
+            reader.Read(out m_LaneOccupiedMultiplier);
+            reader.Read(out m_IntervalExponent);
+        }
+        else
+        {
+            reader.Read(out m_TurnsSinceLastRun);
+            reader.Read(out m_LowFlowTimer);
+            reader.Read(out m_LowPriorityTimer);
+            reader.Read(out m_CarFlow);
+            reader.Read(out m_CarLaneOccupied);
+            reader.Read(out m_PublicCarLaneOccupied);
+            reader.Read(out m_TrackLaneOccupied);
+            reader.Read(out m_PedestrianLaneOccupied);
+            reader.Read(out m_BicycleLaneOccupied);
+            reader.Read(out m_WeightedWaiting);
+            reader.Read(out m_TargetDuration);
+            reader.Read(out m_Priority);
+            reader.Read(out uint options);
+            m_Options = (Options)options;
+            reader.Read(out m_MinimumDuration);
+            reader.Read(out m_MaximumDuration);
+            reader.Read(out m_TargetDurationMultiplier);
+            reader.Read(out m_LaneOccupiedMultiplier);
+            reader.Read(out m_IntervalExponent);
+            reader.Read(out byte changeMetric);
+            m_ChangeMetric = (StepChangeMetric)changeMetric;
+            reader.Read(out m_WaitFlowBalance);
+            reader.Read(out m_CarOpenDelay);
+            reader.Read(out m_CarCloseDelay);
+            reader.Read(out m_PublicCarOpenDelay);
+            reader.Read(out m_PublicCarCloseDelay);
+            reader.Read(out m_TrackOpenDelay);
+            reader.Read(out m_TrackCloseDelay);
+            reader.Read(out m_PedestrianOpenDelay);
+            reader.Read(out m_PedestrianCloseDelay);
+            reader.Read(out m_BicycleOpenDelay);
+            reader.Read(out m_BicycleCloseDelay);
+            reader.Read(out m_CarWeight);
+            reader.Read(out m_PublicCarWeight);
+            reader.Read(out m_TrackWeight);
+            reader.Read(out m_PedestrianWeight);
+            reader.Read(out m_BicycleWeight);
+            reader.Read(out m_FlowRatio);
+            reader.Read(out m_WaitRatio);
+            reader.Read(out m_SmoothingFactor);
+            reader.Read(out m_NextStepRefIndex);
+            reader.Read(out m_CurrentFlow);
+            reader.Read(out m_CurrentWait);
+        }
     }
 
     private void Initialisation()
@@ -209,12 +251,13 @@ public struct CustomPhaseData : IBufferElementData, ISerializable
         m_PublicCarLaneOccupied = 0;
         m_TrackLaneOccupied = 0;
         m_PedestrianLaneOccupied = 0;
+        m_BicycleLaneOccupied = 0;
         m_WeightedWaiting = 0;
         m_TargetDuration = 0;
         m_Priority = 0;
         m_Options = Options.PrioritiseTrack;
         m_MinimumDuration = 2;
-        m_MaximumDuration = 300;
+        m_MaximumDuration = 20;
         m_TargetDurationMultiplier = 1f;
         m_LaneOccupiedMultiplier = 1f;
         m_IntervalExponent = 2f;

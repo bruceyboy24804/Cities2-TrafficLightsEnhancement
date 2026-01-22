@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,6 +40,8 @@ public partial class UISystem
     private GetterValueBinding<string> m_SelectMemberStateBinding;
 
     private GetterValueBinding<string> m_UncoveredConnectionsBinding;
+
+    private GetterValueBinding<string> m_UserPresetsBinding;
 
     private void AddUIBindings()
     {
@@ -123,8 +126,14 @@ public partial class UISystem
         CreateTrigger<string>("CallUpdateEdgeGroupMaskForJunction", CallUpdateEdgeGroupMaskForJunction);
         CreateTrigger<string>("CallUpdateMemberPattern", CallUpdateMemberPattern);
         CreateTrigger<string>("CallHighlightEdge", CallHighlightEdge);
+        CreateTrigger<string>("CallApplyPhaseTemplate", CallApplyPhaseTemplate);
+        CreateTrigger<string>("CallSaveUserPreset", CallSaveUserPreset);
+        CreateTrigger<string>("CallDeleteUserPreset", CallDeleteUserPreset);
+        CreateTrigger<string>("CallApplyUserPreset", CallApplyUserPreset);
+        CreateTrigger<string>("CallUpdateUserPreset", CallUpdateUserPreset);
         AddBinding(new TriggerBinding<Entity>(Mod.modName, "GoTo", NavigateTo));
 
+        m_UserPresetsBinding = CreateBinding("GetUserPresets", GetUserPresets, autoUpdate: false);
         m_AddMemberStateBinding = CreateBinding("GetAddMemberState", GetAddMemberState, autoUpdate: false);
         m_SelectMemberStateBinding = CreateBinding("GetSelectMemberState", GetSelectMemberState, autoUpdate: false);
         m_UncoveredConnectionsBinding = CreateBinding("GetUncoveredConnections", GetUncoveredConnections, autoUpdate: false);
@@ -325,10 +334,10 @@ public partial class UISystem
                 {
                     menu.items.Add(UITypes.MainPanelItemPattern("SplitPhasingProtectedLeft", (uint)CustomTrafficLights.Patterns.SplitPhasingProtectedLeft, (uint)m_CustomTrafficLights.GetPattern()));
                 }
-                bool isCustomPhaseMode = m_CustomTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase || 
-                                         m_CustomTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed;
-                menu.items.Add(UITypes.MainPanelItemPattern("CustomPhases", (uint)CustomTrafficLights.Patterns.CustomPhase, 
-                    isCustomPhaseMode ? (uint)CustomTrafficLights.Patterns.CustomPhase : (uint)m_CustomTrafficLights.GetPattern()));
+                bool isCustomPhaseMode = m_CustomTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.Dynamic || 
+                                         m_CustomTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed;
+                menu.items.Add(UITypes.MainPanelItemPattern("CustomPhases", (uint)CustomTrafficLights.Patterns.Vanilla, 
+                    isCustomPhaseMode ? (uint)CustomTrafficLights.Patterns.Vanilla : (uint)m_CustomTrafficLights.GetPattern()));
                 if (isCustomPhaseMode)
                 {
                     menu.items.Add(new UITypes.ItemButton{label = "CustomPhaseEditor", key = "state", value = $"{(int)MainPanelState.CustomPhase}", engineEventName = "C2VM.TrafficLightsEnhancement.TRIGGER:CallSetMainPanelState"});
@@ -403,7 +412,7 @@ public partial class UISystem
             
             menu.items.Add(new UITypes.ItemCustomPhaseHeader
             {
-                trafficLightMode = customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed ? 1 : 0,
+                trafficLightMode = customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed ? 1 : 0,
                 phaseCount = customPhaseDataBuffer.Length
             });
             
@@ -437,7 +446,8 @@ public partial class UISystem
                     bicycleLaneOccupied = customPhaseDataBuffer[i].m_BicycleLaneOccupied,
                     changeMetric = (int)customPhaseDataBuffer[i].m_ChangeMetric,
                     waitFlowBalance = customPhaseDataBuffer[i].m_WaitFlowBalance,
-                    trafficLightMode = customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed ? 1 : 0,
+                    trafficLightMode = customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed ? 1 : 0,
+                    smartPhaseSelection = (customTrafficLights.GetOptions() & CustomTrafficLights.TrafficOptions.SmartPhaseSelection) != 0,
                     carActive = IsTrafficTypeActive(m_SelectedEntity, i, "car"),
                     publicCarActive = IsTrafficTypeActive(m_SelectedEntity, i, "publicCar"),
                     trackActive = IsTrafficTypeActive(m_SelectedEntity, i, "track"),
@@ -692,13 +702,23 @@ public partial class UISystem
 				value = ((uint)CustomTrafficLights.Patterns.CustomPhase).ToString()
 			};
 		}
-        m_CustomTrafficLights.SetPattern(((uint)m_CustomTrafficLights.GetPattern() & 0xFFFF0000) | uint.Parse(pattern.value));
+        
+        // Store current mode before changing pattern
+        var currentMode = m_CustomTrafficLights.GetMode();
+        
+        m_CustomTrafficLights.SetPattern((CustomTrafficLights.TrafficPattern)uint.Parse(pattern.value));
         if (m_CustomTrafficLights.GetPatternOnly() != CustomTrafficLights.Patterns.Vanilla)
         {
-            m_CustomTrafficLights.SetPattern(m_CustomTrafficLights.GetPattern() & ~CustomTrafficLights.Patterns.CentreTurnGiveWay);
+            var currentPattern = m_CustomTrafficLights.GetLegacyPattern();
+            currentPattern = currentPattern & ~CustomTrafficLights.Patterns.CentreTurnGiveWay;
+            m_CustomTrafficLights.SetPattern(currentPattern);
         }
         
-        if (m_CustomTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase)
+        // Restore the mode after pattern change
+        m_CustomTrafficLights.SetMode(currentMode);
+        
+        if (m_CustomTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.Dynamic || 
+            m_CustomTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed)
         {
             DynamicBuffer<CustomPhaseData> customPhaseDataBuffer;
             if (!EntityManager.TryGetBuffer(m_SelectedEntity, false, out customPhaseDataBuffer))
@@ -717,25 +737,8 @@ public partial class UISystem
             {
                 customPhaseDataBuffer.Add(new CustomPhaseData());
             }
-            m_CustomTrafficLights.SetPattern(CustomTrafficLights.Patterns.CustomPhase);
             UpdateEdgeInfo(m_SelectedEntity);
             UpdateActiveEditingCustomPhaseIndex(0);
-        }
-        if (m_CustomTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed)
-        {
-            if (!EntityManager.HasBuffer<CustomPhaseData>(m_SelectedEntity))
-            {
-                EntityManager.AddComponent<CustomPhaseData>(m_SelectedEntity);
-            }
-            if (!EntityManager.HasBuffer<EdgeGroupMask>(m_SelectedEntity))
-            {
-                EntityManager.AddComponent<EdgeGroupMask>(m_SelectedEntity);
-            }
-            if (!EntityManager.HasBuffer<SubLaneGroupMask>(m_SelectedEntity))
-            {
-                EntityManager.AddComponent<SubLaneGroupMask>(m_SelectedEntity);
-            }
-            m_CustomTrafficLights.SetPattern(CustomTrafficLights.Patterns.FixedTimed);
         }
         UpdateEntity();
         
@@ -746,7 +749,7 @@ public partial class UISystem
             if (member.m_IsGroupLeader && member.m_GroupEntity != Entity.Null)
             {
                 var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
-                trafficGroupSystem.PropagatePatternToMembers(member.m_GroupEntity, m_CustomTrafficLights.GetPattern());
+                trafficGroupSystem.PropagatePatternToMembers(member.m_GroupEntity, m_CustomTrafficLights.GetLegacyPattern());
             }
         }
         
@@ -762,7 +765,8 @@ public partial class UISystem
             {
                 if (uint.Parse(option.key) == (uint)pattern)
                 {
-                    m_CustomTrafficLights.SetPattern(m_CustomTrafficLights.GetPattern() ^ pattern);
+                    var currentPattern = m_CustomTrafficLights.GetLegacyPattern();
+                    m_CustomTrafficLights.SetPattern(currentPattern ^ pattern);
                 }
             }
         }
@@ -875,7 +879,63 @@ public partial class UISystem
             UpdateEntity();
         }
     }
+    protected void CallApplyPhaseTemplate(string jsonString)
+    {
+        var input = JsonConvert.DeserializeAnonymousType(jsonString, new { templateId = 0, protectedTurns = false, splitPhasing = false });
+        if (m_SelectedEntity.Equals(Entity.Null))
+        {
+            return;
+        }
 
+        if (!EntityManager.TryGetBuffer(m_SelectedEntity, false, out DynamicBuffer<CustomPhaseData> customPhaseDataBuffer))
+        {
+            return;
+        }
+
+        if (input.protectedTurns || input.splitPhasing)
+        {
+            if (!EntityManager.TryGetBuffer(m_SelectedEntity, false, out DynamicBuffer<ConnectedEdge> connectedEdges))
+            {
+                return;
+            }
+            if (!EntityManager.TryGetBuffer(m_SelectedEntity, false, out DynamicBuffer<EdgeGroupMask> edgeGroupMaskBuffer))
+            {
+                return;
+            }
+
+            customPhaseDataBuffer.Clear();
+            edgeGroupMaskBuffer.Clear();
+
+            CustomTrafficLights.Patterns pattern = CustomTrafficLights.Patterns.Vanilla;
+            if (input.protectedTurns)
+            {
+                pattern = CustomTrafficLights.Patterns.ProtectedCentreTurn;
+            }
+            else if (input.splitPhasing)
+            {
+                pattern = CustomTrafficLights.Patterns.SplitPhasing;
+            }
+
+            GenerateCustomPhasesForPattern(m_SelectedEntity, pattern, connectedEdges, customPhaseDataBuffer, edgeGroupMaskBuffer);
+        }
+
+        PhaseTemplate template = (PhaseTemplate)input.templateId;
+        PhaseTemplates.ApplyTemplate(customPhaseDataBuffer, template);
+
+        if (EntityManager.HasComponent<TrafficGroupMember>(m_SelectedEntity))
+        {
+            var member = EntityManager.GetComponentData<TrafficGroupMember>(m_SelectedEntity);
+            if (member.m_GroupEntity != Entity.Null)
+            {
+                var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
+                trafficGroupSystem.RecalculateGroupCycleLength(member.m_GroupEntity);
+            }
+        }
+
+        m_MainPanelBinding.Update();
+        UpdateEdgeInfo(m_SelectedEntity);
+        UpdateEntity(addUpdated: false);
+    }
     protected void CallSwapCustomPhase(string input)
     {
         var definition = new { index1 = 0, index2 = 0 };
@@ -1008,6 +1068,38 @@ public partial class UISystem
         var input = JsonConvert.DeserializeObject<UITypes.UpdateCustomPhaseData>(jsonString);
         if (!m_SelectedEntity.Equals(Entity.Null))
         {
+            if (input.key == "TrafficLightMode")
+            {
+                if (Convert.ToInt32(input.value) == 1)
+                {
+                    m_CustomTrafficLights.SetMode(CustomTrafficLights.TrafficMode.FixedTimed);
+                }
+                else
+                {
+                    m_CustomTrafficLights.SetMode(CustomTrafficLights.TrafficMode.Dynamic);
+                }
+                UpdateEntity();
+                m_MainPanelBinding.Update();
+                return;
+            }
+
+            if (input.key == "SmartPhaseSelection")
+            {
+                bool isEnabled = input.value.ToString().ToLower() == "true";
+                var currentOptions = m_CustomTrafficLights.GetOptions();
+                if (isEnabled)
+                {
+                    m_CustomTrafficLights.SetOptions(currentOptions | CustomTrafficLights.TrafficOptions.SmartPhaseSelection);
+                }
+                else
+                {
+                    m_CustomTrafficLights.SetOptions(currentOptions & ~CustomTrafficLights.TrafficOptions.SmartPhaseSelection);
+                }
+                UpdateEntity();
+                m_MainPanelBinding.Update();
+                return;
+            }
+
             DynamicBuffer<CustomPhaseData> customPhaseDataBuffer;
             if (!EntityManager.TryGetBuffer(m_SelectedEntity, false, out customPhaseDataBuffer))
             {
@@ -1023,7 +1115,7 @@ public partial class UISystem
 
             if (input.key == "MinimumDuration")
             {
-                newValue.m_MinimumDuration = (ushort)input.value;
+                newValue.m_MinimumDuration = Convert.ToUInt16(input.value);
                 if (newValue.m_MinimumDuration > newValue.m_MaximumDuration)
                 {
                     newValue.m_MaximumDuration = newValue.m_MinimumDuration;
@@ -1031,7 +1123,7 @@ public partial class UISystem
             }
             else if (input.key == "MaximumDuration")
             {
-                newValue.m_MaximumDuration = (ushort)input.value;
+                newValue.m_MaximumDuration = Convert.ToUInt16(input.value);
                 if (newValue.m_MinimumDuration > newValue.m_MaximumDuration)
                 {
                     newValue.m_MinimumDuration = newValue.m_MaximumDuration;
@@ -1039,11 +1131,11 @@ public partial class UISystem
             }
             else if (input.key == "TargetDurationMultiplier")
             {
-                newValue.m_TargetDurationMultiplier = (float)input.value;
+                newValue.m_TargetDurationMultiplier = Convert.ToSingle(input.value);
             }
             else if (input.key == "IntervalExponent")
             {
-                newValue.m_IntervalExponent = (float)input.value;
+                newValue.m_IntervalExponent = Convert.ToSingle(input.value);
             }
             else if (input.key == "LinkedWithNextPhase")
             {
@@ -1056,63 +1148,51 @@ public partial class UISystem
             
             else if (input.key == "carOpenDelay")
             {
-                newValue.m_CarOpenDelay = (short)input.value;
+                newValue.m_CarOpenDelay = Convert.ToInt16(input.value);
             }
             else if (input.key == "carCloseDelay")
             {
-                newValue.m_CarCloseDelay = (short)input.value;
+                newValue.m_CarCloseDelay = Convert.ToInt16(input.value);
             }
             else if (input.key == "publicCarOpenDelay")
             {
-                newValue.m_PublicCarOpenDelay = (short)input.value;
+                newValue.m_PublicCarOpenDelay = Convert.ToInt16(input.value);
             }
             else if (input.key == "publicCarCloseDelay")
             {
-                newValue.m_PublicCarCloseDelay = (short)input.value;
+                newValue.m_PublicCarCloseDelay = Convert.ToInt16(input.value);
             }
             else if (input.key == "trackOpenDelay")
             {
-                newValue.m_TrackOpenDelay = (short)input.value;
+                newValue.m_TrackOpenDelay = Convert.ToInt16(input.value);
             }
             else if (input.key == "trackCloseDelay")
             {
-                newValue.m_TrackCloseDelay = (short)input.value;
+                newValue.m_TrackCloseDelay = Convert.ToInt16(input.value);
             }
             else if (input.key == "pedestrianOpenDelay")
             {
-                newValue.m_PedestrianOpenDelay = (short)input.value;
+                newValue.m_PedestrianOpenDelay = Convert.ToInt16(input.value);
             }
             else if (input.key == "pedestrianCloseDelay")
             {
-                newValue.m_PedestrianCloseDelay = (short)input.value;
+                newValue.m_PedestrianCloseDelay = Convert.ToInt16(input.value);
             }
             else if (input.key == "bicycleOpenDelay")
             {
-                newValue.m_BicycleOpenDelay = (short)input.value;
+                newValue.m_BicycleOpenDelay = Convert.ToInt16(input.value);
             }
             else if (input.key == "bicycleCloseDelay")
             {
-                newValue.m_BicycleCloseDelay = (short)input.value;
+                newValue.m_BicycleCloseDelay = Convert.ToInt16(input.value);
             }
             else if (input.key == "ChangeMetric")
             {
-                newValue.m_ChangeMetric = (CustomPhaseData.StepChangeMetric)(int)input.value;
+                newValue.m_ChangeMetric = (CustomPhaseData.StepChangeMetric)Convert.ToInt32(input.value);
             }
             else if (input.key == "WaitFlowBalance")
             {
-                newValue.m_WaitFlowBalance = (float)input.value;
-            }
-            else if (input.key == "TrafficLightMode")
-            {
-                if ((int)input.value == 1)
-                {
-                    m_CustomTrafficLights.SetPattern(CustomTrafficLights.Patterns.FixedTimed);
-                }
-                else
-                {
-                    m_CustomTrafficLights.SetPattern(CustomTrafficLights.Patterns.CustomPhase);
-                }
-                UpdateEntity();
+                newValue.m_WaitFlowBalance = Convert.ToSingle(input.value);
             }
             
             customPhaseDataBuffer[index] = newValue;
@@ -1443,7 +1523,7 @@ public partial class UISystem
         
         if (data.key == "GreenWaveSpeed")
         {
-            speed = data.value;
+            speed = (float)data.value;
             if (m_SelectedEntity == Entity.Null || !EntityManager.HasComponent<TrafficGroupMember>(m_SelectedEntity))
             {
                 return;
@@ -1475,7 +1555,7 @@ public partial class UISystem
         
         if (data.key == "GreenWaveOffset")
         {
-            offset = data.value;
+            offset = (float)data.value;
             if (m_SelectedEntity == Entity.Null || !EntityManager.HasComponent<TrafficGroupMember>(m_SelectedEntity))
             {
                 return;
@@ -1604,7 +1684,7 @@ public partial class UISystem
         if (groupEntity != Entity.Null && EntityManager.HasComponent<TrafficGroup>(groupEntity))
         {
             var group = EntityManager.GetComponentData<TrafficGroup>(groupEntity);
-            group.m_CycleLength = data.value;
+            group.m_CycleLength = (float)data.value;
             EntityManager.SetComponentData(groupEntity, group);
             m_MainPanelBinding.Update();
         }
@@ -1891,7 +1971,7 @@ public partial class UISystem
                 return;
             }
             
-            SignalDelaySystem.SetSignalDelay(EntityManager, m_SelectedEntity, edgeEntity, input.openDelay, input.closeDelay, input.isEnabled);
+            SignalDelaySystem.SetSignalDelay(EntityManager, m_SelectedEntity, edgeEntity, (short)input.openDelay, (short)input.closeDelay, input.isEnabled);
             UpdateEntity();
             
             if (m_SignalDelayDataBinding != null)
@@ -2253,7 +2333,7 @@ public partial class UISystem
         
         if (input.key == "MinimumDuration")
         {
-            newValue.m_MinimumDuration = (ushort)input.value;
+            newValue.m_MinimumDuration = Convert.ToUInt16(input.value);
             if (newValue.m_MinimumDuration > newValue.m_MaximumDuration)
             {
                 newValue.m_MaximumDuration = newValue.m_MinimumDuration;
@@ -2261,7 +2341,7 @@ public partial class UISystem
         }
         else if (input.key == "MaximumDuration")
         {
-            newValue.m_MaximumDuration = (ushort)input.value;
+            newValue.m_MaximumDuration = Convert.ToUInt16(input.value);
             if (newValue.m_MinimumDuration > newValue.m_MaximumDuration)
             {
                 newValue.m_MinimumDuration = newValue.m_MaximumDuration;
@@ -2269,11 +2349,11 @@ public partial class UISystem
         }
         else if (input.key == "TargetDurationMultiplier")
         {
-            newValue.m_TargetDurationMultiplier = (float)input.value;
+            newValue.m_TargetDurationMultiplier = Convert.ToSingle(input.value);
         }
         else if (input.key == "IntervalExponent")
         {
-            newValue.m_IntervalExponent = (float)input.value;
+            newValue.m_IntervalExponent = Convert.ToSingle(input.value);
         }
         else if (input.key == "LinkedWithNextPhase")
         {
@@ -2285,11 +2365,11 @@ public partial class UISystem
         }
         else if (input.key == "ChangeMetric")
         {
-            newValue.m_ChangeMetric = (CustomPhaseData.StepChangeMetric)(int)input.value;
+            newValue.m_ChangeMetric = (CustomPhaseData.StepChangeMetric)Convert.ToInt32(input.value);
         }
         else if (input.key == "WaitFlowBalance")
         {
-            newValue.m_WaitFlowBalance = (float)input.value;
+            newValue.m_WaitFlowBalance = Convert.ToSingle(input.value);
         }
         
         customPhaseDataBuffer[index] = newValue;
@@ -2399,11 +2479,13 @@ public partial class UISystem
 		}
         
         var customTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(junctionEntity);
-        customTrafficLights.SetPattern(((uint)customTrafficLights.GetPattern() & 0xFFFF0000) | input.patternValue);
+        customTrafficLights.SetPattern((CustomTrafficLights.TrafficPattern)input.patternValue);
         
         if (customTrafficLights.GetPatternOnly() != CustomTrafficLights.Patterns.Vanilla)
         {
-            customTrafficLights.SetPattern(customTrafficLights.GetPattern() & ~CustomTrafficLights.Patterns.CentreTurnGiveWay);
+            var currentPattern = customTrafficLights.GetLegacyPattern();
+            currentPattern = currentPattern & ~CustomTrafficLights.Patterns.CentreTurnGiveWay;
+            customTrafficLights.SetPattern(currentPattern);
         }
         
         if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase)
@@ -2420,9 +2502,9 @@ public partial class UISystem
             {
                 EntityManager.AddComponent<SubLaneGroupMask>(junctionEntity);
             }
-            customTrafficLights.SetPattern(CustomTrafficLights.Patterns.CustomPhase);
+            customTrafficLights.SetLegacyPattern((uint)CustomTrafficLights.Patterns.CustomPhase);
         }
-        if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed)
+        if (customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed)
         {
             if (!EntityManager.HasBuffer<CustomPhaseData>(junctionEntity))
             {
@@ -2436,7 +2518,7 @@ public partial class UISystem
             {
                 EntityManager.AddComponent<SubLaneGroupMask>(junctionEntity);
             }
-            customTrafficLights.SetPattern(CustomTrafficLights.Patterns.FixedTimed);
+            customTrafficLights.SetMode(CustomTrafficLights.TrafficMode.FixedTimed);
         }
         
         EntityManager.SetComponentData(junctionEntity, customTrafficLights);
@@ -2451,8 +2533,8 @@ public partial class UISystem
         
         
         if (input.navigateToCustomPhase && 
-            (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase ||
-             customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed))
+            (customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.Dynamic || 
+             customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed))
         {
             
             if (junctionEntity != m_SelectedEntity)
@@ -2558,7 +2640,7 @@ public partial class UISystem
         {
             
             var customTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(m_SelectedEntity);
-            customTrafficLights.SetPattern(CustomTrafficLights.Patterns.CustomPhase);
+            customTrafficLights.SetLegacyPattern((uint)CustomTrafficLights.Patterns.CustomPhase);
             customTrafficLights.m_Timer = 0;
             EntityManager.SetComponentData(m_SelectedEntity, customTrafficLights);
             m_CustomTrafficLights = customTrafficLights;
@@ -2860,5 +2942,101 @@ public partial class UISystem
         }
 
         return 2;
+    }
+
+    protected string GetUserPresets()
+    {
+        if (Mod.m_Settings == null)
+        {
+            return "[]";
+        }
+        return Mod.m_Settings.GetUserPresetsJson();
+    }
+
+    protected void CallSaveUserPreset(string jsonString)
+    {
+        var input = JsonConvert.DeserializeAnonymousType(jsonString, new { name = "" });
+        if (string.IsNullOrWhiteSpace(input?.name))
+        {
+            return;
+        }
+
+        if (m_SelectedEntity == Entity.Null)
+        {
+            return;
+        }
+
+        if (!EntityManager.TryGetBuffer<CustomPhaseData>(m_SelectedEntity, true, out var phaseBuffer) || phaseBuffer.Length == 0)
+        {
+            return;
+        }
+
+        var phase = phaseBuffer[0];
+        Mod.m_Settings?.SaveUserPreset(input.name, phase);
+        m_UserPresetsBinding?.Update();
+    }
+
+    protected void CallDeleteUserPreset(string jsonString)
+    {
+        var input = JsonConvert.DeserializeAnonymousType(jsonString, new { presetId = "" });
+        if (string.IsNullOrWhiteSpace(input?.presetId))
+        {
+            return;
+        }
+
+        Mod.m_Settings?.DeleteUserPreset(input.presetId);
+        m_UserPresetsBinding?.Update();
+    }
+
+    protected void CallApplyUserPreset(string jsonString)
+    {
+        var input = JsonConvert.DeserializeAnonymousType(jsonString, new { presetId = "" });
+        if (string.IsNullOrWhiteSpace(input?.presetId))
+        {
+            return;
+        }
+
+        if (m_SelectedEntity == Entity.Null)
+        {
+            return;
+        }
+
+        var preset = Mod.m_Settings?.GetUserPreset(input.presetId);
+        if (preset == null)
+        {
+            return;
+        }
+
+        if (!EntityManager.TryGetBuffer<CustomPhaseData>(m_SelectedEntity, false, out var phaseBuffer))
+        {
+            return;
+        }
+
+        for (int i = 0; i < phaseBuffer.Length; i++)
+        {
+            var phase = phaseBuffer[i];
+            phase.m_MinimumDuration = preset.MinDuration;
+            phase.m_MaximumDuration = preset.MaxDuration;
+            phase.m_TargetDurationMultiplier = preset.TargetDurationMultiplier;
+            phase.m_IntervalExponent = preset.IntervalExponent;
+            phase.m_WaitFlowBalance = preset.WaitFlowBalance;
+            phase.m_ChangeMetric = (CustomPhaseData.StepChangeMetric)preset.ChangeMetric;
+            phaseBuffer[i] = phase;
+        }
+
+        m_MainPanelBinding?.Update();
+        UpdateEntity(addUpdated: false);
+    }
+
+    protected void CallUpdateUserPreset(string jsonString)
+    {
+        var input = JsonConvert.DeserializeAnonymousType(jsonString, new { presetId = "", name = "" });
+        if (string.IsNullOrWhiteSpace(input?.presetId) || string.IsNullOrWhiteSpace(input?.name))
+        {
+            return;
+        }
+
+        Mod.m_Settings?.UpdateUserPresetName(input.presetId, input.name);
+        m_UserPresetsBinding?.Update();
     }
 }

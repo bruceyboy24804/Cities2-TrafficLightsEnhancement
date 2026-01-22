@@ -27,16 +27,16 @@ This is a Beta for Traffic Lights Enhancement. If you want need specific informa
     <!--Tag, can be set multiple times-->
     <Tag Value="" />
     <!--Link to the forum post where the mod can be discussed-->
-    <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/traffic-lights-enhancement-bruceyboy24804-version.1890334/" />
+    <ForumLink Value="" />
     <!--Version of the mod-->
-    <ModVersion Value="0.3.3.1" />
+    <ModVersion Value="0.3.3.6" />
     <!--Recommended version of the base game to use the mod-->
     <GameVersion Value="1.5.*" />
     <!--Dependency for the mod, can be set multiple times-->
     <Dependency Id="" />
     <!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
-    <ChangeLog>## Version 0.3.3.1
-- Fixed bugs and some crash to desktops
+    <ChangeLog>## Version 0.3.3.6
+- Bug fixes and improvements
     </ChangeLog>
     <!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon-->
     <ExternalLink Type="github" Url="https://github.com/bruceyboy24804/Cities2-TrafficLightsEnhancement/tree/Beta" />

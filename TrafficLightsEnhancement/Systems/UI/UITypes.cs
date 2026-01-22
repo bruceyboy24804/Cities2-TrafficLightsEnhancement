@@ -230,6 +230,8 @@ public static class UITypes
         
         public float flowRatio;
         public float waitRatio;
+        
+        public bool smartPhaseSelection;
     }
 
     public struct UpdateCustomPhaseData
@@ -240,7 +242,7 @@ public static class UITypes
 
         public string key;
 
-        public double value;
+        public object value;
     }
 
     public struct SetSignalDelayData
