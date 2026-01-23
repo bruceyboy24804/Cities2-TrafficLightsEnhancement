@@ -24,7 +24,7 @@ public struct TrafficGroup : IComponentData, ISerializable
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
         writer.Write(uint.MaxValue);
-        writer.Write(TLEDataVersion.Current);
+        writer.Write(TLEDataVersion.V1);
         writer.Write(m_IsCoordinated);
         writer.Write(m_GreenWaveEnabled);
         writer.Write(m_GreenWaveSpeed);
@@ -46,24 +46,20 @@ public struct TrafficGroup : IComponentData, ISerializable
         m_CycleLength = 16f;
         m_LastSyncTime = 0f;
         m_CycleTimer = 0f;
-        
         reader.Read(out uint marker);
-        int version;
-        if (marker == uint.MaxValue)
-            reader.Read(out version);
-        else
-            version = 1;
+        if (marker != uint.MaxValue) return; 
         
-        if (version < TLEDataVersion.V2)
-            return;
-        
-        reader.Read(out m_IsCoordinated);
-        reader.Read(out m_GreenWaveEnabled);
-        reader.Read(out m_GreenWaveSpeed);
-        reader.Read(out m_GreenWaveOffset);
-        reader.Read(out m_MaxCoordinationDistance);
-        reader.Read(out m_CreationTime);
-        reader.Read(out m_CycleLength);
+        reader.Read(out int version);
+        if (version <= TLEDataVersion.V2)
+        {
+           reader.Read(out m_IsCoordinated);
+           reader.Read(out m_GreenWaveEnabled);
+           reader.Read(out m_GreenWaveSpeed);
+           reader.Read(out m_GreenWaveOffset);
+           reader.Read(out m_MaxCoordinationDistance);
+           reader.Read(out m_CreationTime);
+           reader.Read(out m_CycleLength); 
+        }
     }
 
     public TrafficGroup()

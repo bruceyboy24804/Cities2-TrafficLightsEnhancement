@@ -129,7 +129,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		}
 		else
 		{
-			EntityManager.AddComponentData(junctionEntity, new CustomTrafficLights(CustomTrafficLights.TrafficPattern.Vanilla, CustomTrafficLights.TrafficMode.Dynamic));
+			EntityManager.AddComponentData(junctionEntity, new CustomTrafficLights(CustomTrafficLights.Patterns.Vanilla));
 		}
 		if (!EntityManager.HasBuffer<CustomPhaseData>(junctionEntity))
 		{
@@ -1226,7 +1226,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		errorMessage = "";
 
 		
-		CustomTrafficLights.TrafficPattern sourcePattern = CustomTrafficLights.TrafficPattern.Vanilla;
+		CustomTrafficLights.Patterns sourcePattern = CustomTrafficLights.Patterns.Vanilla;
 		CustomTrafficLights.TrafficMode sourceMode = CustomTrafficLights.TrafficMode.Dynamic;
 		bool sourceHasCustomLights = EntityManager.HasComponent<CustomTrafficLights>(sourceJunction);
 		if (sourceHasCustomLights)
@@ -1237,7 +1237,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		}
 
 		
-		CustomTrafficLights.TrafficPattern targetPattern = CustomTrafficLights.TrafficPattern.Vanilla;
+		CustomTrafficLights.Patterns targetPattern = CustomTrafficLights.Patterns.Vanilla;
 		CustomTrafficLights.TrafficMode targetMode = CustomTrafficLights.TrafficMode.Dynamic;
 		bool targetHasCustomLights = EntityManager.HasComponent<CustomTrafficLights>(targetJunction);
 		if (targetHasCustomLights)
@@ -1272,9 +1272,9 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 		
 		if ((sourceMode != CustomTrafficLights.TrafficMode.Dynamic && sourceMode != CustomTrafficLights.TrafficMode.FixedTimed) && 
-			sourcePattern != CustomTrafficLights.TrafficPattern.Vanilla)
+			sourcePattern != CustomTrafficLights.Patterns.Vanilla)
 		{
-			if (targetPattern == CustomTrafficLights.TrafficPattern.Vanilla)
+			if (targetPattern == CustomTrafficLights.Patterns.Vanilla)
 			{
 				string sourcePatternName = GetPatternDisplayName(sourcePattern, sourceMode);
 				errorMessage = $"Cannot sync phases: Target intersection has no pattern configured.\n\n" +
@@ -1288,14 +1288,14 @@ public partial class TrafficGroupSystem : GameSystemBase
 		return true;
 	}
 
-	private string GetPatternDisplayName(CustomTrafficLights.TrafficPattern pattern, CustomTrafficLights.TrafficMode mode)
+	private string GetPatternDisplayName(CustomTrafficLights.Patterns pattern, CustomTrafficLights.TrafficMode mode)
 	{
 		return (pattern, mode) switch
 		{
-			(CustomTrafficLights.TrafficPattern.Vanilla, _) => "Vanilla",
-			(CustomTrafficLights.TrafficPattern.SplitPhasing, _) => "Split Phasing",
-			(CustomTrafficLights.TrafficPattern.ProtectedCentreTurn, _) => "Protected Turns",
-			(CustomTrafficLights.TrafficPattern.SplitPhasingProtectedLeft, _) => "Split Phasing Protected Left",
+			(CustomTrafficLights.Patterns.Vanilla, _) => "Vanilla",
+			(CustomTrafficLights.Patterns.SplitPhasing, _) => "Split Phasing",
+			(CustomTrafficLights.Patterns.ProtectedCentreTurn, _) => "Protected Turns",
+			(CustomTrafficLights.Patterns.SplitPhasingProtectedLeft, _) => "Split Phasing Protected Left",
 			(_, CustomTrafficLights.TrafficMode.Dynamic) => "Dynamic",
 			(_, CustomTrafficLights.TrafficMode.FixedTimed) => "Fixed Timed",
 			_ => $"{pattern} + {mode}"

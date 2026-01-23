@@ -31,16 +31,16 @@ public struct GroupMask
       m_CloseDelay = 0.0f;
       
       reader.Read(out ushort version);
-      reader.Read(out m_GoGroupMask);
-      reader.Read(out m_YieldGroupMask);
-      
-      if (version < TLEDataVersion.V2)
+      if (version <= TLEDataVersion.V1)
       {
-        return;
+        reader.Read(out m_GoGroupMask);
+        reader.Read(out m_YieldGroupMask);
       }
-      
-      reader.Read(out m_OpenDelay);
-      reader.Read(out m_CloseDelay);
+      else if ( version <= TLEDataVersion.V2 )
+      {
+        reader.Read(out m_OpenDelay);
+        reader.Read(out m_CloseDelay);
+      }
     }
 
     public void Write(IJsonWriter writer)
@@ -80,7 +80,7 @@ public struct GroupMask
 
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
-      writer.Write((ushort)TLEDataVersion.V2);
+      writer.Write(TLEDataVersion.V1);
       writer.Write(m_Left);
       writer.Write(m_Straight);
       writer.Write(m_Right);
@@ -89,11 +89,14 @@ public struct GroupMask
 
     public void Deserialize<TReader>(TReader reader) where TReader : IReader
     {
-      reader.Read(out ushort version);
-      reader.Read(out m_Left);
-      reader.Read(out m_Straight);
-      reader.Read(out m_Right);
-      reader.Read(out m_UTurn);
+      reader.Read(out int version);
+      if (version <= TLEDataVersion.V1)
+      {
+        reader.Read(out m_Left);
+        reader.Read(out m_Straight);
+        reader.Read(out m_Right);
+        reader.Read(out m_UTurn);
+      }
     }
 
     public void Write(IJsonWriter writer)

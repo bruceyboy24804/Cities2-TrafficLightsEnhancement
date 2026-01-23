@@ -69,23 +69,19 @@ export function TrafficLightModeSelector(props: { trafficLightMode: number }) {
     return (
         <PanelFoldout header={<div className={styles.foldoutHeader}>{getString(locale, "TrafficLightMode")}</div>}
                       initialExpanded={true}>
-            <MainPanelRadio
-                keyName="TrafficLightMode"
-                value="0"
-                isChecked={props.trafficLightMode === 0}
-                label="CustomPhase"
-                triggerName="CallUpdateCustomPhaseData"
-                tooltip="Dynamic phase mode that adjusts timing based on traffic conditions."
-                className={styles.hover}
+                        <MainPanelRadio
+                        keyName="TrafficLightMode"
+                        value="0"
+                        isChecked={props.trafficLightMode === 0}
+                        label="Dynamic"
+                        triggerName="CallUpdateCustomPhaseData"
             />
             <MainPanelRadio
                 keyName="TrafficLightMode"
                 value="1"
                 isChecked={props.trafficLightMode === 1}
-                label="FixedTimed"
+                label="Fixed Timed"
                 triggerName="CallUpdateCustomPhaseData"
-                tooltip="Fixed timing mode with preset phase durations."
-                className={styles.hover}
             />
         </PanelFoldout>
     );

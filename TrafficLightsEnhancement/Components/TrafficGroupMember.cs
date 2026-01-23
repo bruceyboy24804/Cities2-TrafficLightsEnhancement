@@ -17,7 +17,7 @@ public struct TrafficGroupMember : IComponentData, ISerializable
 
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
-        writer.Write(TLEDataVersion.Current);
+        writer.Write(TLEDataVersion.V2);
         writer.Write(m_GroupEntity);
         writer.Write(m_LeaderEntity);
         writer.Write(m_GroupIndex);
@@ -32,22 +32,11 @@ public struct TrafficGroupMember : IComponentData, ISerializable
     {
         reader.Read(out int version);
         
-        if (version < TLEDataVersion.V2)
+        if (version <= TLEDataVersion.V2)
         {
             
             reader.Read(out int entityVersion);
             m_GroupEntity = new Entity { Index = version, Version = entityVersion };
-            reader.Read(out m_LeaderEntity);
-            reader.Read(out m_GroupIndex);
-            reader.Read(out m_DistanceToGroupCenter);
-            reader.Read(out m_DistanceToLeader);
-            reader.Read(out m_PhaseOffset);
-            reader.Read(out m_SignalDelay);
-            reader.Read(out m_IsGroupLeader);
-        }
-        else
-        {
-            reader.Read(out m_GroupEntity);
             reader.Read(out m_LeaderEntity);
             reader.Read(out m_GroupIndex);
             reader.Read(out m_DistanceToGroupCenter);

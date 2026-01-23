@@ -222,7 +222,7 @@ public partial class UISystem : ExtendedUISystemBase
                 var node = nodeArray[i];
                 var customTrafficLights = customTrafficLightsArray[i];
                 RenderSystem.Icon icon = RenderSystem.Icon.TrafficLight;
-                if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase || customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.FixedTimed)
+                if (customTrafficLights.GetPatternOnly() == CustomTrafficLights.Patterns.CustomPhase)
                 {
                     icon = RenderSystem.Icon.TrafficLightWrench;
                 }
