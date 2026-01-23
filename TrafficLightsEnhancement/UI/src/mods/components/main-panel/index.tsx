@@ -10,7 +10,7 @@ import Header from './header';
 import Content from './content';
 
 import CustomPhaseMainPanel from '../../components/custom-phase-tool/main-panel';
-import{Button, Tooltip} from "cs2/ui"
+import{Button} from "cs2/ui"
 
 const traffLightSrc = "Media/Game/Icons/TrafficLights.svg"
 const defaultPanel = {
@@ -163,16 +163,14 @@ export default function MainPanel() {
 
   return (
     <>
-    <Tooltip tooltip={"Traffic Lights Enhancement"} direction={"down"}>
-      <Button
-      variant='floating'
-      src={traffLightSrc}
-      onSelect={floatingButtonClickHandler}
-      selected={showPanel}
-      tooltipLabel
-    />
-    </Tooltip>
     
+    <Button
+        variant='floating'
+        selected={showFloatingButton}
+        src={traffLightSrc}
+        onSelect={floatingButtonClickHandler}
+        tooltipLabel={panel.title}
+      />
     
       
       <Container

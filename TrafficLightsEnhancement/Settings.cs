@@ -33,6 +33,8 @@ public class Settings : ModSetting
 
     public const string kKeyboardBindingMainPanelToggle = "KeyboardBindingMainPanelToggle";
     
+    public const string kKeyboardBindingMultiSelectEntity = "KeyboardBindingMultiSelectEntity";
+
     public struct Values
     {
         public bool m_DefaultSplitPhasing;
@@ -153,6 +155,10 @@ public class Settings : ModSetting
     [SettingsUISection(kTabKeyBindings, kGroupMainPanel)]
     public ProxyBinding m_MainPanelToggleKeyboardBinding { get; set; }
     
+    [SettingsUIKeyboardBinding(BindingKeyboard.None, kKeyboardBindingMultiSelectEntity)]
+    [SettingsUISection(kTabKeyBindings, kGroupMainPanel)]
+    public ProxyBinding m_MultiSelectEntityKeyboardBinding { get; set; }
+
     [SettingsUISection(kTabKeyBindings, kGroupKeyBindingReset)]
     [SettingsUIButton]
     [SettingsUIConfirmation(null, null)]
