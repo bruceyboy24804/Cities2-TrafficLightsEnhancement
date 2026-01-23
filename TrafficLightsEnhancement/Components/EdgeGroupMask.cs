@@ -15,27 +15,19 @@ public struct EdgeGroupMask : IBufferElementData, ISerializable, IJsonWritable
     }
 
     public Entity m_Edge;
-
     public WorldPosition m_Position;
-
     public Options m_Options;
-
     public GroupMask.Turn m_Car;
-
     public GroupMask.Turn m_PublicCar;
-
     public GroupMask.Turn m_Track;
-
     public GroupMask.Signal m_Pedestrian;
-
     public GroupMask.Signal m_Bicycle;
-
     public short m_OpenDelay;
     public short m_CloseDelay;
 
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
-        writer.Write((ushort)TLEDataVersion.V2);
+        writer.Write(TLEDataVersion.V2);
         writer.Write(m_Edge);
         writer.Write((float3)m_Position);
         writer.Write((uint)m_Options);
@@ -50,34 +42,36 @@ public struct EdgeGroupMask : IBufferElementData, ISerializable, IJsonWritable
 
     public void Deserialize<TReader>(TReader reader) where TReader : IReader
     {
+        // Initialize V2 fields with defaults
         m_Bicycle = new GroupMask.Signal();
         m_OpenDelay = 0;
         m_CloseDelay = 0;
         
-        reader.Read(out ushort version);
-        reader.Read(out m_Edge);
-        reader.Read(out float3 edgePosition);
-        reader.Read(out uint options);
-        reader.Read(out m_Car);
-        reader.Read(out m_PublicCar);
-        reader.Read(out m_Track);
+        reader.Read(out int version);
         
-        if (version < TLEDataVersion.V2)
+        
+        if (version <= TLEDataVersion.V1)
         {
-            reader.Read(out GroupMask.Signal signal1);
-            reader.Read(out GroupMask.Signal signal2);
-            m_Pedestrian = signal1.m_GoGroupMask != 0 ? signal1 : signal2;
+            reader.Read(out m_Edge);
+            reader.Read(out float3 edgePosition);
+            reader.Read(out uint options);
+            reader.Read(out m_Car);
+            reader.Read(out m_PublicCar);
+            reader.Read(out m_Track);
+            m_Position = edgePosition;
+            m_Options = (Options)options;
+            reader.Read(out GroupMask.Signal pedestrianStopLine);
+            reader.Read(out GroupMask.Signal pedestrianNonStopLine);
+            m_Pedestrian = pedestrianStopLine.m_GoGroupMask != 0 ? pedestrianStopLine : pedestrianNonStopLine;
         }
-        else
+        else if (version <= TLEDataVersion.V2)
         {
+            // V2 format
             reader.Read(out m_Pedestrian);
             reader.Read(out m_Bicycle);
             reader.Read(out m_OpenDelay);
             reader.Read(out m_CloseDelay);
         }
-        
-        m_Position = edgePosition;
-        m_Options = (Options)options;
     }
 
     public void Write(IJsonWriter writer)

@@ -15,7 +15,7 @@ namespace C2VM.TrafficLightsEnhancement.Components
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
-            writer.Write((ushort)TLEDataVersion.V2);
+            writer.Write(TLEDataVersion.V1);
             writer.Write(m_Duration);
             writer.Write(m_Distance);
             writer.Write(m_Frame);
@@ -23,10 +23,13 @@ namespace C2VM.TrafficLightsEnhancement.Components
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
-            reader.Read(out ushort version);
-            reader.Read(out m_Duration);
-            reader.Read(out m_Distance);
-            reader.Read(out m_Frame);
+            reader.Read(out int version);
+            if (version <= TLEDataVersion.V1)
+            {
+                reader.Read(out m_Duration);
+                reader.Read(out m_Distance);
+                reader.Read(out m_Frame);
+            }
         }
 
         public LaneFlowHistory()

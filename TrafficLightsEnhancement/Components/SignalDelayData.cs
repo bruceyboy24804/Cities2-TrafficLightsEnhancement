@@ -13,7 +13,7 @@ public struct SignalDelayData : IBufferElementData, ISerializable
     
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
-        writer.Write(TLEDataVersion.Current);
+        writer.Write(TLEDataVersion.V1);
         writer.Write(m_Edge);
         writer.Write(m_OpenDelay);
         writer.Write(m_CloseDelay);

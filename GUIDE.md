@@ -13,7 +13,7 @@ This mod introduces advanced traffic light controls for Cities: Skylines II, all
 | --- | --- |
 | Vanilla | Operates like the base game.<br>LHT: protected straight, protected left, and permissive right.<br>RHT: protected straight, protected right, and permissive left. |
 | Split-Phasing | Only one road has a green light at a time. |
-| Advanced Split Phasing[^1] | Similar to Split Phasing, with additional protected turns for the other road at the same time.[^2] |
+| Split Phasing + Protected Left[^1] | Similar to Split Phasing, with additional protected turns for the other road at the same time.[^2] |
 | Protected Left/Right-Turns[^1] | LHT: Centre lanes perform a protected left turn first, followed by normal traffic flow including straight and right turns.<br>RHT: Centre lanes perform a protected right turn first, followed by normal traffic flow including straight and left turns.<br>[Video Illustration](https://www.youtube.com/watch?v=CIw0Au8qFQ8) |
 
 ## Options
@@ -42,5 +42,5 @@ This mod introduces advanced traffic light controls for Cities: Skylines II, all
 
 ![Screenshot 2023-12-10 103213](https://github.com/primeinc/Cities2-Various-Mods/assets/80482978/ee258c53-0ab4-43a2-a9b8-2ed07a792c1a)
 
-[^1]: Advanced Split Phasing and Protected Left/Right-Turns are unavailable at complex junctions, such as those with tram tracks.
+[^1]: Split Phasing + Protected Left and Protected Left/Right-Turns are unavailable at complex junctions, such as those with tram tracks.
 [^2]: This advanced split phasing handles traffic light groups dynamically, considering traffic direction and neighboring lane groups.

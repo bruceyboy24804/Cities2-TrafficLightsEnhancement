@@ -19,7 +19,7 @@ public struct SubLaneGroupMask : IBufferElementData, ISerializable, IJsonWritabl
 
   public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
   {
-    writer.Write((ushort)TLEDataVersion.V2);
+    writer.Write(TLEDataVersion.V1);
     writer.Write(m_SubLane);
     writer.Write((float3)m_Position);
     writer.Write((uint) m_Options);
@@ -30,15 +30,18 @@ public struct SubLaneGroupMask : IBufferElementData, ISerializable, IJsonWritabl
 
   public void Deserialize<TReader>(TReader reader) where TReader : IReader
   {
-    reader.Read(out ushort version);
-    reader.Read(out m_SubLane);
-    reader.Read(out float3 subLanePosition);
-    reader.Read(out uint options);
-    reader.Read(out m_Car);
-    reader.Read(out m_Track);
-    reader.Read(out m_Pedestrian);
-    m_Position = subLanePosition;
-    m_Options = (Options)options;
+    reader.Read(out int version);
+    if (version <= TLEDataVersion.V1)
+    {
+      reader.Read(out m_SubLane);
+      reader.Read(out float3 subLanePosition);
+      reader.Read(out uint options);
+      reader.Read(out m_Car);
+      reader.Read(out m_Track);
+      reader.Read(out m_Pedestrian);
+      m_Position = subLanePosition;
+      m_Options = (Options)options;
+    }
   }
 
   public void Write(IJsonWriter writer)
