@@ -23,12 +23,12 @@ public struct CustomTrafficLights : IComponentData, IQueryTypeParameter, ISerial
     writer.Write(uint.MaxValue);
     writer.Write(TLEDataVersion.Current);
     writer.Write((uint)m_Pattern);
+    writer.Write((uint)m_Mode);
+    writer.Write((uint)m_Options);
     writer.Write(m_PedestrianPhaseDurationMultiplier);
     writer.Write(m_PedestrianPhaseGroupMask);
     writer.Write(m_Timer);
     writer.Write(m_ManualSignalGroup);
-    writer.Write((uint)m_Mode);
-    writer.Write((uint)m_Options);
   }
 
   public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -38,54 +38,46 @@ public struct CustomTrafficLights : IComponentData, IQueryTypeParameter, ISerial
     m_Timer = 0U;
     m_ManualSignalGroup = 0;
 
-   reader.Read(out int version);
-    if (version <= TLEDataVersion.V1)
+    reader.Read(out uint marker);
+    int version;
+    if (marker == uint.MaxValue)
+      reader.Read(out version);
+    else
+      version = 1;
+
+    if (version < TLEDataVersion.V2)
     {
-      for (int i = 1; i < DefaultSelectedPatternLength; i++)
-      {
-        reader.Read(out uint pattern);
-      }
-      
+      for (int i = 1; i < 16; i++)
+        reader.Read(out uint _);
       m_Pattern = TrafficPattern.Vanilla;
+      m_Mode = TrafficMode.Dynamic;
+      m_Options = TrafficOptions.None;
     }
-    else if (version <= TLEDataVersion.V2)
+    else if (version < TLEDataVersion.V3) 
     {
       reader.Read(out uint pattern);
-      m_Pattern = (TrafficPattern)pattern;
-    }
-    else if ( version <= TLEDataVersion.V3 )
-    {
+      MigrateFromOldPattern((Patterns)pattern);
       reader.Read(out float pedestrianPhaseDurationMultiplier);
       reader.Read(out int pedestrianPhaseGroupMask);
       m_PedestrianPhaseDurationMultiplier = pedestrianPhaseDurationMultiplier;
       m_PedestrianPhaseGroupMask = pedestrianPhaseGroupMask;
-    }
-    else if (version <= TLEDataVersion.V4)
-    {
       reader.Read(out m_Timer);
       reader.Read(out m_ManualSignalGroup);
-    }
-    else if ( version <= TLEDataVersion.V5 )
-    {
-      reader.Read(out  uint mode);
-      reader.Read(out uint options);
-      m_Mode = (TrafficMode)mode;
-      m_Options = (TrafficOptions)options;
     }
     else
     {
       reader.Read(out uint pattern);
       m_Pattern = (TrafficPattern)pattern;
+      reader.Read(out uint mode);
+      m_Mode = (TrafficMode)mode;
+      reader.Read(out uint options);
+      m_Options = (TrafficOptions)options;
       reader.Read(out float pedestrianPhaseDurationMultiplier);
       reader.Read(out int pedestrianPhaseGroupMask);
       m_PedestrianPhaseDurationMultiplier = pedestrianPhaseDurationMultiplier;
       m_PedestrianPhaseGroupMask = pedestrianPhaseGroupMask;
       reader.Read(out m_Timer);
       reader.Read(out m_ManualSignalGroup);
-      reader.Read(out uint mode);
-      m_Mode = (TrafficMode)mode;
-      reader.Read(out uint options);
-      m_Options = (TrafficOptions)options;
     }
   }
 
