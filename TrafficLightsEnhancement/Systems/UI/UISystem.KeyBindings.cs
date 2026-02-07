@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 
 namespace C2VM.TrafficLightsEnhancement.Systems.UI;
 
-public partial class UISystem : ExtendedUISystemBase
+public partial class UISystem
 {
     private ProxyAction m_MainPanelToggleKeyboardBinding;
 

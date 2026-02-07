@@ -10,6 +10,7 @@ import { callKeyPress } from "bindings";
 
 import MainPanel from "./components/main-panel";
 import CustomPhaseTool from "./components/custom-phase-tool";
+import { MigrationIssuesModal } from "./components/migration-issues";
 
 export default function App() {
   const [locale, setLocale] = useState(defaultLocale);
@@ -38,6 +39,7 @@ export default function App() {
       <LocaleContext.Provider value={locale}>
         <MainPanel />
         <CustomPhaseTool />
+        <MigrationIssuesModal />
       </LocaleContext.Provider>
     </CityConfigurationContext.Provider>
   );

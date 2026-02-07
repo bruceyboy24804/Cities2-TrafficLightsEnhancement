@@ -20,6 +20,8 @@ public struct EdgeGroupMask : IBufferElementData, ISerializable, IJsonWritable
     public GroupMask.Turn m_Car;
     public GroupMask.Turn m_PublicCar;
     public GroupMask.Turn m_Track;
+    public GroupMask.Signal m_PedestrianStopLine;
+    public GroupMask.Signal m_PedestrianNonStopLine;
     public GroupMask.Signal m_Pedestrian;
     public GroupMask.Signal m_Bicycle;
     public short m_OpenDelay;
@@ -27,13 +29,15 @@ public struct EdgeGroupMask : IBufferElementData, ISerializable, IJsonWritable
 
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
-        writer.Write(TLEDataVersion.V2);
+        writer.Write((ushort)TLEDataVersion.V2);
         writer.Write(m_Edge);
         writer.Write((float3)m_Position);
         writer.Write((uint)m_Options);
         writer.Write(m_Car);
         writer.Write(m_PublicCar);
         writer.Write(m_Track);
+        writer.Write(m_PedestrianStopLine);
+        writer.Write(m_PedestrianNonStopLine);
         writer.Write(m_Pedestrian);
         writer.Write(m_Bicycle);
         writer.Write(m_OpenDelay);
@@ -42,35 +46,34 @@ public struct EdgeGroupMask : IBufferElementData, ISerializable, IJsonWritable
 
     public void Deserialize<TReader>(TReader reader) where TReader : IReader
     {
-        // Initialize V2 fields with defaults
         m_Bicycle = new GroupMask.Signal();
         m_OpenDelay = 0;
         m_CloseDelay = 0;
+
+        reader.Read(out ushort version);
         
-        reader.Read(out int version);
-        
-        
-        if (version <= TLEDataVersion.V1)
+        reader.Read(out m_Edge);
+        reader.Read(out float3 edgePosition);
+        reader.Read(out uint options);
+        reader.Read(out m_Car);
+        reader.Read(out m_PublicCar);
+        reader.Read(out m_Track);
+        reader.Read(out m_PedestrianStopLine);
+        reader.Read(out m_PedestrianNonStopLine);
+        m_Position = edgePosition;
+        m_Options = (Options)options;
+
+        if (version >= TLEDataVersion.V2)
         {
-            reader.Read(out m_Edge);
-            reader.Read(out float3 edgePosition);
-            reader.Read(out uint options);
-            reader.Read(out m_Car);
-            reader.Read(out m_PublicCar);
-            reader.Read(out m_Track);
-            m_Position = edgePosition;
-            m_Options = (Options)options;
-            reader.Read(out GroupMask.Signal pedestrianStopLine);
-            reader.Read(out GroupMask.Signal pedestrianNonStopLine);
-            m_Pedestrian = pedestrianStopLine.m_GoGroupMask != 0 ? pedestrianStopLine : pedestrianNonStopLine;
-        }
-        else if (version <= TLEDataVersion.V2)
-        {
-            // V2 format
             reader.Read(out m_Pedestrian);
             reader.Read(out m_Bicycle);
             reader.Read(out m_OpenDelay);
             reader.Read(out m_CloseDelay);
+        }
+        else
+        {
+            m_Pedestrian.m_GoGroupMask = (ushort)(m_PedestrianStopLine.m_GoGroupMask | m_PedestrianNonStopLine.m_GoGroupMask);
+            m_Pedestrian.m_YieldGroupMask = (ushort)(m_PedestrianStopLine.m_YieldGroupMask | m_PedestrianNonStopLine.m_YieldGroupMask);
         }
     }
 

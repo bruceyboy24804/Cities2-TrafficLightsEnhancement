@@ -10,11 +10,16 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
     {
         public static bool UpdateTrafficLightState(ref TrafficLights trafficLights, ref CustomTrafficLights customTrafficLights, DynamicBuffer<CustomPhaseData> customPhaseDataBuffer)
         {
+            return UpdateTrafficLightState(ref trafficLights, ref customTrafficLights, customPhaseDataBuffer, customPhaseDataBuffer);
+        }
+
+        public static bool UpdateTrafficLightState(ref TrafficLights trafficLights, ref CustomTrafficLights customTrafficLights, DynamicBuffer<CustomPhaseData> customPhaseDataBuffer, DynamicBuffer<CustomPhaseData> settingsPhaseDataBuffer)
+        {
             if (trafficLights.m_State == TrafficLightState. None || trafficLights.m_State == TrafficLightState. Extending || trafficLights.m_State == TrafficLightState.Extended)
             {
                 trafficLights.m_State = TrafficLightState.Beginning;
                 trafficLights.m_CurrentSignalGroup = 0;
-                trafficLights.m_NextSignalGroup = GetNextSignalGroup(trafficLights.m_CurrentSignalGroup, customPhaseDataBuffer, customTrafficLights, out _);
+                trafficLights.m_NextSignalGroup = GetNextSignalGroup(trafficLights.m_CurrentSignalGroup, settingsPhaseDataBuffer, customTrafficLights, out _);
                 trafficLights.m_Timer = 0;
                 customTrafficLights.m_Timer = 0;
                 return true;
@@ -60,8 +65,13 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
                 customTrafficLights.m_Timer++;
                 CustomPhaseData phase = customPhaseDataBuffer[currentSignalIndex];
                 
-                bool stepDone = ShouldChangeStep(
+                CustomPhaseData settingsPhase = currentSignalIndex < settingsPhaseDataBuffer.Length 
+                    ? settingsPhaseDataBuffer[currentSignalIndex] 
+                    : phase;
+                
+                bool stepDone = ShouldChangeStepWithSettings(
                     ref phase,
+                    settingsPhase,
                     customPhaseDataBuffer,
                     currentSignalIndex,
                     customTrafficLights.m_Timer,
@@ -84,7 +94,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
                 }
                 
                 customPhaseDataBuffer[currentSignalIndex] = phase;
-                byte nextGroup = GetNextSignalGroup(trafficLights.m_CurrentSignalGroup, customPhaseDataBuffer, customTrafficLights, out var linked);
+                byte nextGroup = GetNextSignalGroup(trafficLights.m_CurrentSignalGroup, settingsPhaseDataBuffer, customTrafficLights, out var linked);
                 if (stepDone && nextGroup != trafficLights.m_CurrentSignalGroup)
                 {
                     trafficLights.m_State = TrafficLightState.Ending;
@@ -413,41 +423,54 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
             out float flow,
             out float wait)
         {
+            return ShouldChangeStepWithSettings(ref phase, phase, customPhaseDataBuffer, currentPhaseIndex, timer, customTrafficLights, out flow, out wait);
+        }
+
+        private static bool ShouldChangeStepWithSettings(
+            ref CustomPhaseData phase,
+            CustomPhaseData settingsPhase,
+            DynamicBuffer<CustomPhaseData> customPhaseDataBuffer,
+            int currentPhaseIndex,
+            uint timer,
+            CustomTrafficLights customTrafficLights,
+            out float flow,
+            out float wait)
+        {
             flow = phase.AverageCarFlow();
             
             if (customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed)
             {
-                wait = MaxOtherPhasesWaiting(customPhaseDataBuffer, currentPhaseIndex) * phase.m_WaitFlowBalance;
+                wait = MaxOtherPhasesWaiting(customPhaseDataBuffer, currentPhaseIndex) * settingsPhase.m_WaitFlowBalance;
                 
-                if (timer >= phase.m_MaximumDuration)
+                if (timer >= settingsPhase.m_MaximumDuration)
                 {
                     return true;
                 }
-                if (timer > phase.m_MinimumDuration)
+                if (timer > settingsPhase.m_MinimumDuration)
                 {
-                    return ShouldChangeByMetric(phase.m_ChangeMetric, flow, wait);
+                    return ShouldChangeByMetric(settingsPhase.m_ChangeMetric, flow, wait);
                 }
                 return false;
             }
             else
             {
-                wait = MaxOtherPhasesWaiting(customPhaseDataBuffer, currentPhaseIndex) * phase.m_WaitFlowBalance;
-                float targetDuration = 10f * (flow + (float)(phase.m_TrackLaneOccupied * 0.5)) * phase.m_TargetDurationMultiplier;
+                wait = MaxOtherPhasesWaiting(customPhaseDataBuffer, currentPhaseIndex) * settingsPhase.m_WaitFlowBalance;
+                float targetDuration = 10f * (flow + (float)(phase.m_TrackLaneOccupied * 0.5)) * settingsPhase.m_TargetDurationMultiplier;
                 phase.m_TargetDuration = targetDuration;
                 
-                if (timer <= phase.m_MinimumDuration)
+                if (timer <= settingsPhase.m_MinimumDuration)
                 {
                     phase.m_LowFlowTimer = 0;
                     phase.m_LowPriorityTimer = 0;
                     return false;
                 }
                 
-                if (timer >= phase.m_MaximumDuration)
+                if (timer >= settingsPhase.m_MaximumDuration)
                 {
                     return true;
                 }
                 
-                bool metricSaysChange = ShouldChangeByMetric(phase.m_ChangeMetric, flow, wait);
+                bool metricSaysChange = ShouldChangeByMetric(settingsPhase.m_ChangeMetric, flow, wait);
                 
                 if (!metricSaysChange)
                 {

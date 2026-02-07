@@ -64,3 +64,11 @@ export const callSaveUserPreset = triggers.create<[string]>("CallSaveUserPreset"
 export const callDeleteUserPreset = triggers.create<[string]>("CallDeleteUserPreset");
 export const callApplyUserPreset = triggers.create<[string]>("CallApplyUserPreset");
 export const callUpdateUserPreset = triggers.create<[string]>("CallUpdateUserPreset");
+
+// Migration issues bindings
+export const affectedEntities = new OneWayBinding<any[]>("GetAffectedEntities", []);
+export const hasMigrationIssues = new OneWayBinding<boolean>("HasMigrationIssues", false);
+export const callNavigateToEntity = (entity: {index: number, version: number}) => {
+	triggers.create<[string]>("NavigateToEntity")(JSON.stringify(entity));
+};
+export const callRemoveAffectedEntity = triggers.create<[number]>("RemoveAffectedEntity");

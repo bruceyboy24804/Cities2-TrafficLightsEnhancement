@@ -1,4 +1,5 @@
 import {useContext} from 'react';
+import {useValue} from 'cs2/api';
 import {engineCall} from '../../engine';
 import {LocaleContext} from '../../context';
 import {getString} from '../../localisations';
@@ -14,6 +15,8 @@ import Radio from '../../components/common/radio';
 import Scrollable from '../../components/common/scrollable';
 import {MainPanelItem} from 'mods/general';
 import styles from './mainPanel.module.scss';
+import {affectedEntities} from '../../../bindings';
+import {migrationModalVisible} from '../migration-issues/migrationModalState';
 
 interface AddMemberMember {
     index: number;
@@ -33,6 +36,13 @@ export default function Content(props: { items: MainPanelItem[], addMemberData?:
     const buttonItems = props.items.filter(item => item.itemType === "button");
     const nonButtonItems = props.items.filter(item => item.itemType !== "button");
     const isAddingMember = props.addMemberData?.isAddingMember && props.addMemberData.members && props.addMemberData.members.length > 0;
+    
+    const migrationEntities = useValue(affectedEntities.binding) as {index: number, version: number}[];
+    const hasMigrationIssues = migrationEntities && migrationEntities.length > 0;
+    
+    const handleShowMigrationModal = () => {
+        migrationModalVisible.update(true);
+    };
 
     return (
         <div className={styles.contentContainer}>
@@ -71,6 +81,16 @@ export default function Content(props: { items: MainPanelItem[], addMemberData?:
                     }
                     return <></>;
                 })}
+                {hasMigrationIssues && (
+                    <div 
+                        className={styles.migrationNotice} 
+                        onClick={handleShowMigrationModal}
+                        style={{cursor: 'pointer'}}
+                    >
+                        <span className={styles.migrationIcon}>⚠</span>
+                        <span>{`${migrationEntities.length} intersections with migration issues`}</span>
+                    </div>
+                )}
                 {isAddingMember && props.addMemberData && (
                     <div className={styles.memberListContainer}>
                         <div className={styles.memberListTitle}>Members ({props.addMemberData.members.length})</div>

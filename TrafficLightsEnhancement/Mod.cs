@@ -52,6 +52,7 @@ public class Mod : IMod
 
         string netToolSystemToolID = m_World.GetOrCreateSystemManaged<Game.Tools.NetToolSystem>().toolID;
         Assert(netToolSystemToolID == "Net Tool", $"netToolSystemToolID: {netToolSystemToolID}");
+       // NativeLeakDetection.Mode = NativeLeakDetectionMode.EnabledWithStackTrace;
     }
 
     public void OnDispose()

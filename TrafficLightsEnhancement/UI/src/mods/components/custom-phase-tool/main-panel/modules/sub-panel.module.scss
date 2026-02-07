@@ -17,3 +17,13 @@
     background-color: var(--hoverColorBright);
   }
 }
+
+.coordinatedFollowerNotice {
+    padding: 12rem;
+    margin: 8rem;
+    background-color: rgba(255, 165, 0, 0.15);
+    border-left: 3rem solid var(--accentColorNormal);
+    color: var(--textColorDim);
+    font-size: var(--fontSizeS);
+    line-height: 1.4;
+}

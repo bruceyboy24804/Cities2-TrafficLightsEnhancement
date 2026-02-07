@@ -137,6 +137,8 @@ public static class UITypes
         public int trafficLightMode;
 
         public int phaseCount;
+
+        public bool isCoordinatedFollower;
     }
 
     public struct ItemCustomPhase

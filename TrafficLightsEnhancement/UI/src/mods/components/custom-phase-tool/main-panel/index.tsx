@@ -234,10 +234,10 @@ export default function MainPanel(props: {items: MainPanelItem[], selectedEntity
       </div>
       <div className={styles.rightPanelContainer}>
         <Scrollable style={{flex: 1}} contentStyle={{flex: 1}} trackStyle={{marginLeft: "0.25em"}}>
-          {activeItem && <SubPanel data={activeItem} edges={filteredEdges} phaseIndex={activeItem.index} />}
+          {activeItem && <SubPanel data={activeItem} edges={filteredEdges} phaseIndex={activeItem.index} isCoordinatedFollower={headerItem?.isCoordinatedFollower} />}
           {!activeItem && currentSignalGroup > 0 && currentSignalGroup < props.items.length && 
             props.items[currentSignalGroup].itemType === "customPhase" &&
-            <SubPanel data={props.items[currentSignalGroup] as MainPanelItemCustomPhase} edges={filteredEdges} phaseIndex={currentSignalGroup - 1} statisticsOnly={true} />}
+            <SubPanel data={props.items[currentSignalGroup] as MainPanelItemCustomPhase} edges={filteredEdges} phaseIndex={currentSignalGroup - 1} statisticsOnly={true} isCoordinatedFollower={headerItem?.isCoordinatedFollower} />}
         </Scrollable>
       </div>
     </div>

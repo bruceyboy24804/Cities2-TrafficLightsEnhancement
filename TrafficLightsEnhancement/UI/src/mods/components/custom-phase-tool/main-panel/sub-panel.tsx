@@ -139,7 +139,7 @@ const EdgeFoldout = ({
                 enableTextField: true,
                 textFieldRegExp: "^\\d{0,3}$",
                 engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallUpdateEdgeDelay",
-                tooltip: "Delay (in ticks) before this edge's signals turn green after the phase starts."
+                tooltip: "Delay before this edge's signals turn green after the phase starts."
             }}/>
             <MainPanelRange className={styles.hover} data={{
                 itemType: "range",
@@ -160,7 +160,7 @@ const EdgeFoldout = ({
                 enableTextField: true,
                 textFieldRegExp: "^\\d{0,3}$",
                 engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallUpdateEdgeDelay",
-                tooltip: "Time (in ticks) before the phase ends when this edge's signals turn red."
+                tooltip: "Time before the phase ends when this edge's signals turn red."
             }}/>
         </PanelFoldout>
     );
@@ -171,6 +171,7 @@ export default function SubPanel(props: {
     edges?: EdgeInfo[];
     phaseIndex?: number;
     statisticsOnly?: boolean;
+    isCoordinatedFollower?: boolean;
 }) {
     const locale = useContext(LocaleContext);
     const data = props.data;
@@ -201,121 +202,149 @@ export default function SubPanel(props: {
 
     return (
         <>
-            {!props.statisticsOnly && <>
-                <PanelFoldout
-                    header={<div className={styles.foldoutHeader}>{getString(locale, "TrafficLightMode")}</div>}
-                    initialExpanded={true}>
-                    <MainPanelRadio
-                        keyName="TrafficLightMode"
-                        value="0"
-                        isChecked={data.trafficLightMode === 0}
-                        label="Dynamic"
-                        triggerName="CallUpdateCustomPhaseData"
-                        tooltip="Dynamic phase mode that adjusts timing based on traffic conditions."
-                        className={styles.hover}
-                    />
-                    <MainPanelRadio
-                        keyName="TrafficLightMode"
-                        value="1"
-                        isChecked={data.trafficLightMode === 1}
-                        label="Fixed Timed"
-                        triggerName="CallUpdateCustomPhaseData"
-                        tooltip="Fixed timing mode with preset phase durations."
-                        className={styles.hover}
-                    />
-                    {data.trafficLightMode === 1 && (
-                        <MainPanelCheckbox
-                            keyName="SmartPhaseSelection"
-                            isChecked={data.smartPhaseSelection}
-                            label="Smart Phase Selection"
+            {!props.statisticsOnly && props.isCoordinatedFollower && (
+                <>
+                    <div className={styles.coordinatedFollowerNotice}>
+                        Phase timing is controlled by the group leader. Values shown below are from the leader.
+                    </div>
+                    <PanelFoldout
+                        header={<div className={styles.foldoutHeader}>Leader Phase Settings (Read-Only)</div>}
+                        initialExpanded={true}>
+                        <ItemTitle title="Traffic Light Mode" secondaryText={data.trafficLightMode === 0 ? "Dynamic" : "Fixed Timed"} dim={true} />
+                        <ItemTitle title="Minimum Duration" secondaryText={`${data.minimumDuration}`} dim={true} />
+                        <ItemTitle title="Maximum Duration" secondaryText={`${data.maximumDuration}`} dim={true} />
+                        {data.trafficLightMode === 0 && <>
+                            <ItemTitle title="Target Duration Multiplier" secondaryText={`${data.targetDurationMultiplier}x`} dim={true} />
+                            <ItemTitle title="Interval Exponent" secondaryText={`${data.intervalExponent}`} dim={true} />
+                            <ItemTitle title="Phase Change Mode" secondaryText={
+                                data.changeMetric === 0 ? "Auto" :
+                                data.changeMetric === 1 ? "On Flow Drop" :
+                                data.changeMetric === 2 ? "On Wait Increase" :
+                                data.changeMetric === 3 ? "When Empty" : "When No Demand"
+                            } dim={true} />
+                            <ItemTitle title="Wait Sensitivity" secondaryText={`${data.waitFlowBalance}`} dim={true} />
+                        </>}
+                    </PanelFoldout>
+                    <Divider />
+                </>
+            )}
+            {!props.statisticsOnly && !props.isCoordinatedFollower && (
+                <>
+                    <PanelFoldout
+                        header={<div className={styles.foldoutHeader}>{getString(locale, "TrafficLightMode")}</div>}
+                        initialExpanded={true}>
+                        <MainPanelRadio
+                            keyName="TrafficLightMode"
+                            value="0"
+                            isChecked={data.trafficLightMode === 0}
+                            label="Dynamic"
                             triggerName="CallUpdateCustomPhaseData"
-                            tooltip="Enable intelligent phase selection based on traffic conditions. Disable for simple sequential phases (1→2→3→4→1...)."
+                            tooltip="Dynamic phase mode that adjusts timing based on traffic conditions."
                             className={styles.hover}
                         />
-                    )}
-                </PanelFoldout>
+                        <MainPanelRadio
+                            keyName="TrafficLightMode"
+                            value="1"
+                            isChecked={data.trafficLightMode === 1}
+                            label="Fixed Timed"
+                            triggerName="CallUpdateCustomPhaseData"
+                            tooltip="Fixed timing mode with preset phase durations."
+                            className={styles.hover}
+                        />
+                        {data.trafficLightMode === 1 && (
+                            <MainPanelCheckbox
+                                keyName="SmartPhaseSelection"
+                                isChecked={data.smartPhaseSelection}
+                                label="Smart Phase Selection"
+                                triggerName="CallUpdateCustomPhaseData"
+                                tooltip="Enable intelligent phase selection based on traffic conditions. Disable for simple sequential phases (1→2→3→4→1...)."
+                                className={styles.hover}
+                            />
+                        )}
+                    </PanelFoldout>
 
-                <Divider/>
-                <PanelFoldout
-                    header={<div className={styles.foldoutHeader}>Timing Template</div>}
-                    initialExpanded={false}>
-                    <PresetManager
-                        builtInTemplates={PHASE_TEMPLATES}
-                        onApplyBuiltIn={(templateId) => {
-                            callApplyPhaseTemplate(JSON.stringify({ templateId }));
-                        }}
-                    />
-                </PanelFoldout>
+                    <Divider/>
+                    <PanelFoldout
+                        header={<div className={styles.foldoutHeader}>Timing Template</div>}
+                        initialExpanded={false}>
+                        <PresetManager
+                            builtInTemplates={PHASE_TEMPLATES}
+                            onApplyBuiltIn={(templateId) => {
+                                callApplyPhaseTemplate(JSON.stringify({ templateId }));
+                            }}
+                        />
+                    </PanelFoldout>
 
-                <Divider/>
-                <PanelFoldout
-                    header={<div className={styles.foldoutHeader}>{getString(locale, "PhaseChangeMode")}</div>}
-                    initialExpanded={false}>
-                    <MainPanelRadio
-                        keyName="ChangeMetric"
-                        value="0"
-                        isChecked={data.changeMetric === 0}
-                        label="Auto"
-                        triggerName="CallUpdateCustomPhaseData"
-                        tooltip="Automatically balances traffic flow and waiting time to decide when to change phase."
-                        className={styles.hover}
-                    />
-                    <MainPanelRadio
-                        keyName="ChangeMetric"
-                        value="1"
-                        isChecked={data.changeMetric === 1}
-                        label="On Flow Drop"
-                        triggerName="CallUpdateCustomPhaseData"
-                        tooltip="Changes phase when traffic flow decreases. Keeps traffic moving smoothly."
-                        className={styles.hover}
-                    />
-                    <MainPanelRadio
-                        keyName="ChangeMetric"
-                        value="2"
-                        isChecked={data.changeMetric === 2}
-                        label="On Wait Increase"
-                        triggerName="CallUpdateCustomPhaseData"
-                        tooltip="Changes phase when waiting traffic increases. Reduces wait times."
-                        className={styles.hover}
-                    />
-                    <MainPanelRadio
-                        keyName="ChangeMetric"
-                        value="3"
-                        isChecked={data.changeMetric === 3}
-                        label="When Empty"
-                        triggerName="CallUpdateCustomPhaseData"
-                        tooltip="Changes phase only when current lanes are empty. Maximizes throughput per phase."
-                        className={styles.hover}
-                    />
-                    <MainPanelRadio
-                        keyName="ChangeMetric"
-                        value="4"
-                        isChecked={data.changeMetric === 4}
-                        label="When No Demand"
-                        triggerName="CallUpdateCustomPhaseData"
-                        tooltip="Changes phase only when other lanes have waiting traffic. Avoids unnecessary changes."
-                        className={styles.hover}
-                    />
-                    <MainPanelRange className={styles.hover} data={{
-                        itemType: "range",
-                        key: "WaitFlowBalance",
-                        label: "Wait Sensitivity",
-                        value: data.waitFlowBalance,
-                        valuePrefix: "",
-                        valueSuffix: "",
-                        min: 0.1,
-                        max: 10,
-                        step: 0.1,
-                        defaultValue: 1,
-                        enableTextField: true,
-                        textFieldRegExp: "^\\d{0,4}(\\.\\d{0,2})?$",
-                        engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallUpdateCustomPhaseData",
-                        tooltip: "How much to prioritize waiting traffic. Higher = change phases sooner when cars are waiting."
-                    }}/>
-                </PanelFoldout>
-            </>}
+                    <Divider/>
+                    <PanelFoldout
+                        header={<div className={styles.foldoutHeader}>{getString(locale, "PhaseChangeMode")}</div>}
+                        initialExpanded={false}>
+                        <MainPanelRadio
+                            keyName="ChangeMetric"
+                            value="0"
+                            isChecked={data.changeMetric === 0}
+                            label="Auto"
+                            triggerName="CallUpdateCustomPhaseData"
+                            tooltip="Automatically balances traffic flow and waiting time to decide when to change phase."
+                            className={styles.hover}
+                        />
+                        <MainPanelRadio
+                            keyName="ChangeMetric"
+                            value="1"
+                            isChecked={data.changeMetric === 1}
+                            label="On Flow Drop"
+                            triggerName="CallUpdateCustomPhaseData"
+                            tooltip="Changes phase when traffic flow decreases. Keeps traffic moving smoothly."
+                            className={styles.hover}
+                        />
+                        <MainPanelRadio
+                            keyName="ChangeMetric"
+                            value="2"
+                            isChecked={data.changeMetric === 2}
+                            label="On Wait Increase"
+                            triggerName="CallUpdateCustomPhaseData"
+                            tooltip="Changes phase when waiting traffic increases. Reduces wait times."
+                            className={styles.hover}
+                        />
+                        <MainPanelRadio
+                            keyName="ChangeMetric"
+                            value="3"
+                            isChecked={data.changeMetric === 3}
+                            label="When Empty"
+                            triggerName="CallUpdateCustomPhaseData"
+                            tooltip="Changes phase only when current lanes are empty. Maximizes throughput per phase."
+                            className={styles.hover}
+                        />
+                        <MainPanelRadio
+                            keyName="ChangeMetric"
+                            value="4"
+                            isChecked={data.changeMetric === 4}
+                            label="When No Demand"
+                            triggerName="CallUpdateCustomPhaseData"
+                            tooltip="Changes phase only when other lanes have waiting traffic. Avoids unnecessary changes."
+                            className={styles.hover}
+                        />
+                        <MainPanelRange className={styles.hover} data={{
+                            itemType: "range",
+                            key: "WaitFlowBalance",
+                            label: "Wait Sensitivity",
+                            value: data.waitFlowBalance,
+                            valuePrefix: "",
+                            valueSuffix: "",
+                            min: 0.1,
+                            max: 10,
+                            step: 0.1,
+                            defaultValue: 1,
+                            enableTextField: true,
+                            textFieldRegExp: "^\\d{0,4}(\\.\\d{0,2})?$",
+                            engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallUpdateCustomPhaseData",
+                            tooltip: "How much to prioritize waiting traffic. Higher = change phases sooner when cars are waiting."
+                        }}/>
+                    </PanelFoldout>
+                </>
+            )}
 
-            {!props.statisticsOnly &&
+            {!props.statisticsOnly && !props.isCoordinatedFollower &&
                 <>
                     <Divider/>
                     <PanelFoldout header={<div className={styles.foldoutHeader}>Adjustments</div>}

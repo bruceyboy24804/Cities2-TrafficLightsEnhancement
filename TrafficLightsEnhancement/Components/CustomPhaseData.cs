@@ -74,8 +74,6 @@ public struct CustomPhaseData : IBufferElementData, ISerializable
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
         writer.Write((ushort)TLEDataVersion.V2);
-        
-        // V1 fields
         writer.Write(m_TurnsSinceLastRun);
         writer.Write(m_LowFlowTimer);
         writer.Write(m_LowPriorityTimer);
@@ -93,8 +91,6 @@ public struct CustomPhaseData : IBufferElementData, ISerializable
         writer.Write(m_TargetDurationMultiplier);
         writer.Write(m_LaneOccupiedMultiplier);
         writer.Write(m_IntervalExponent);
-        
-        // V2 fields
         writer.Write(m_BicycleLaneOccupied);
         writer.Write((byte)m_ChangeMetric);
         writer.Write(m_WaitFlowBalance);
@@ -126,33 +122,26 @@ public struct CustomPhaseData : IBufferElementData, ISerializable
         Initialisation();
 
         reader.Read(out ushort version);
+        reader.Read(out m_TurnsSinceLastRun);
+        reader.Read(out m_LowFlowTimer);
+        reader.Read(out m_LowPriorityTimer);
+        reader.Read(out m_CarFlow);
+        reader.Read(out m_CarLaneOccupied);
+        reader.Read(out m_PublicCarLaneOccupied);
+        reader.Read(out m_TrackLaneOccupied);
+        reader.Read(out m_PedestrianLaneOccupied);
+        reader.Read(out m_WeightedWaiting);
+        reader.Read(out m_TargetDuration);
+        reader.Read(out m_Priority);
+        reader.Read(out uint options);
+        m_Options = (Options)options;
+        reader.Read(out m_MinimumDuration);
+        reader.Read(out m_MaximumDuration);
+        reader.Read(out m_TargetDurationMultiplier);
+        reader.Read(out m_LaneOccupiedMultiplier);
+        reader.Read(out m_IntervalExponent);
 
-        // Read V1 fields
-        if (version <= TLEDataVersion.V1)
-        {
-            reader.Read(out m_TurnsSinceLastRun);
-            reader.Read(out m_LowFlowTimer);
-            reader.Read(out m_LowPriorityTimer);
-            reader.Read(out m_CarFlow);
-            reader.Read(out m_CarLaneOccupied);
-            reader.Read(out m_PublicCarLaneOccupied);
-            reader.Read(out m_TrackLaneOccupied);
-            reader.Read(out m_PedestrianLaneOccupied);
-            reader.Read(out m_WeightedWaiting);
-            reader.Read(out m_TargetDuration);
-            reader.Read(out m_Priority);
-            reader.Read(out uint options);
-            m_Options = (Options)options;
-            reader.Read(out m_MinimumDuration);
-            reader.Read(out m_MaximumDuration);
-            reader.Read(out m_TargetDurationMultiplier);
-            reader.Read(out m_LaneOccupiedMultiplier);
-            reader.Read(out m_IntervalExponent);
-        }
-        
-
-        // Read V2 fields if present
-        if (version <= TLEDataVersion.V2)
+        if (version >= TLEDataVersion.V2)
         {
             reader.Read(out m_BicycleLaneOccupied);
             reader.Read(out byte changeMetric);

@@ -10,7 +10,7 @@ using Colossal.Entities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
-
+using C2VM.TrafficLightsEnhancement.Systems;
 namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
 {
     public partial class TLEDataMigrationSystem : GameSystemBase, IDefaultSerializable, ISerializable
@@ -20,10 +20,11 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
         private EntityQuery _trafficGroupMemberQuery;
         private EntityQuery _extraLaneSignalQuery;
         private EntityQuery _edgeGroupMaskQuery;
+        private EntityQuery _subLaneGroupMaskQuery;
         private EntityQuery _customPhaseDataQuery;
         private int _version;
         private bool _loaded = false;
-
+        private Systems.UI.UISystem _uiSystem;
         protected override void OnCreate()
         {
             base.OnCreate();
@@ -48,9 +49,14 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 .WithAll<EdgeGroupMask>()
                 .Build();
 
+            _subLaneGroupMaskQuery = SystemAPI.QueryBuilder()
+                .WithAll<SubLaneGroupMask>()
+                .Build();
+
             _customPhaseDataQuery = SystemAPI.QueryBuilder()
                 .WithAll<CustomPhaseData>()
                 .Build();
+            _uiSystem = World.GetOrCreateSystemManaged<Systems.UI.UISystem>();
         }
 
         protected override void OnUpdate()
@@ -76,12 +82,52 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 regularValidationOnly = false;
                 MigrateToV2();
             }
+            else if (_version < TLEDataVersion.V5)
+            {
+                regularValidationOnly = false;
+                MigrateToV5();
+            }
+            
 
-            int affectedCount = ValidateLoadedData();
+            
+            int orphanedCount = DetectOrphanedData(_uiSystem);
+            if (orphanedCount > 0)
+            {
+                Mod.m_Log.Warn($"{nameof(TLEDataMigrationSystem)} detected {orphanedCount} intersections with orphaned data (deserialization failure)");
+            }
+
+            MigrateCustomTrafficLights(_uiSystem);
+
+            var (affectedCount, subLaneGroupMaskCount, customTrafficLightsCount) = ValidateLoadedData(_uiSystem);
+
+            int count = _uiSystem.AffectedIntersections.Count;
+            Mod.m_Log.Info($"Affected entities: {count}");
+
+            if (count > 0)
+            {
+                string message;
+                if (orphanedCount > 0)
+                {
+                    message = $"Traffic Lights Enhancement mod detected {orphanedCount} intersection(s) with corrupted data.\n\n" +
+                        "This is likely due to a component version mismatch. The affected intersections have been reset to vanilla signals.\n\n" +
+                        "Click on an intersection in the list to navigate to it and reconfigure.";
+                }
+                else
+                {
+                    message = $"Data from {count} of {totalEntities} intersections could not be loaded.\n\n" +
+                        "To protect your save file, these intersections have been reset to defaults. \n" +
+                        "The Data Migration Issues panel will list any affected intersections.";
+                }
+                var messageDialog = new MessageDialog(
+                    "Traffic Lights Enhancement - Data Migration",
+                    message,
+                    LocalizedString.Id("Common.OK"));
+                GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
+            }
 
             CheckGroupsWithMissingPhases();
 
-            if (affectedCount > 0)
+            /*if (affectedCount > 0)
             {
                 Mod.m_Log.Warn($"{nameof(TLEDataMigrationSystem)} found {affectedCount} affected entities of {totalEntities} total");
                 
@@ -94,7 +140,31 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
             }
 
-            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} {(regularValidationOnly ? "validating" : "migrating")} data version {_version} done. Found {affectedCount} affected entities of {totalEntities}");
+            if (customTrafficLightsCount > 0)
+            {
+                Mod.m_Log.Warn($"{nameof(TLEDataMigrationSystem)} found {customTrafficLightsCount} CustomTrafficLights entities with invalid node references");
+                
+                var messageDialog = new MessageDialog(
+                    "Traffic Lights Enhancement - CustomTrafficLights Migration",
+                    $"Traffic Lights Enhancement mod detected {customTrafficLightsCount} traffic light(s) with invalid node references.\n\n" +
+                    "These configurations have been removed.",
+                    LocalizedString.Id("Common.OK"));
+                GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
+            }
+
+            if (subLaneGroupMaskCount > 0)
+            {
+                Mod.m_Log.Warn($"{nameof(TLEDataMigrationSystem)} found {subLaneGroupMaskCount} SubLaneGroupMask entities with invalid sublane references");
+                
+                var messageDialog = new MessageDialog(
+                    "Traffic Lights Enhancement - SubLane Migration",
+                    $"Traffic Lights Enhancement mod detected {subLaneGroupMaskCount} traffic light(s) with invalid sublane references.\n\n" +
+                    "These references have been removed. Some lane signal configurations may need to be reconfigured.",
+                    LocalizedString.Id("Common.OK"));
+                GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
+            }*/
+
+            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} {(regularValidationOnly ? "validating" : "migrating")} data version {_version} done. Found {affectedCount} affected entities, {customTrafficLightsCount} CustomTrafficLights, {subLaneGroupMaskCount} SubLaneGroupMask entities of {totalEntities} total");
         }
 
         private int CountTotalEntities()
@@ -110,16 +180,20 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 total += _trafficGroupMemberQuery.CalculateEntityCount();
             if (!_edgeGroupMaskQuery.IsEmptyIgnoreFilter)
                 total += _edgeGroupMaskQuery.CalculateEntityCount();
+            if (!_subLaneGroupMaskQuery.IsEmptyIgnoreFilter)
+                total += _subLaneGroupMaskQuery.CalculateEntityCount();
             if (!_customPhaseDataQuery.IsEmptyIgnoreFilter)
                 total += _customPhaseDataQuery.CalculateEntityCount();
             return total;
         }
 
-        private int ValidateLoadedData()
+        private (int affectedCount, int subLaneGroupMaskCount, int customTrafficLightsCount) ValidateLoadedData(Systems.UI.UISystem uiSystem)
         {
             Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} preparing validation job, data version: {_version}");
 
             var invalidEntities = new NativeQueue<Entity>(Allocator.TempJob);
+            var invalidSubLaneGroupMaskEntities = new NativeQueue<Entity>(Allocator.TempJob);
+            var invalidCustomTrafficLightsEntities = new NativeQueue<Entity>(Allocator.TempJob);
             var commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
             var entityStorageInfoLookup = GetEntityStorageInfoLookup();
 
@@ -147,7 +221,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     customTrafficLightsTypeHandle = GetComponentTypeHandle<CustomTrafficLights>(),
                     nodeData = GetComponentLookup<Node>(true),
                     entityInfoLookup = entityStorageInfoLookup,
-                    invalidEntities = invalidEntities.AsParallelWriter(),
+                    invalidEntities = invalidCustomTrafficLightsEntities.AsParallelWriter(),
                     commandBuffer = commandBuffer.AsParallelWriter()
                 };
                 jobHandle = customTrafficLightsJob.ScheduleParallel(_customTrafficLightsQuery, jobHandle);
@@ -192,6 +266,18 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 jobHandle = edgeGroupMaskJob.ScheduleParallel(_edgeGroupMaskQuery, jobHandle);
             }
 
+            if (!_subLaneGroupMaskQuery.IsEmptyIgnoreFilter)
+            {
+                var subLaneGroupMaskJob = new ValidateSubLaneGroupMaskJob
+                {
+                    entityTypeHandle = GetEntityTypeHandle(),
+                    subLaneGroupMaskTypeHandle = GetBufferTypeHandle<SubLaneGroupMask>(),
+                    entityInfoLookup = entityStorageInfoLookup,
+                    invalidEntities = invalidSubLaneGroupMaskEntities.AsParallelWriter()
+                };
+                jobHandle = subLaneGroupMaskJob.ScheduleParallel(_subLaneGroupMaskQuery, jobHandle);
+            }
+
             if (!_customPhaseDataQuery.IsEmptyIgnoreFilter)
             {
                 var customPhaseDataJob = new ValidateCustomPhaseDataJob
@@ -208,9 +294,103 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
             commandBuffer.Dispose();
 
             int affectedCount = invalidEntities.Count;
-            invalidEntities.Dispose();
+            int subLaneGroupMaskCount = invalidSubLaneGroupMaskEntities.Count;
+            int customTrafficLightsCount = invalidCustomTrafficLightsEntities.Count;
 
-            return affectedCount;
+            // Populate UISystem with affected entities (like Traffic mod)
+            while (invalidEntities.TryDequeue(out Entity entity))
+            {
+                uiSystem.AddToAffectedIntersections(entity);
+            }
+
+            while (invalidCustomTrafficLightsEntities.TryDequeue(out Entity entity))
+            {
+                uiSystem.AddToAffectedIntersections(entity);
+            }
+
+            while (invalidSubLaneGroupMaskEntities.TryDequeue(out Entity entity))
+            {
+                uiSystem.AddToAffectedIntersections(entity);
+            }
+
+            invalidEntities.Dispose();
+            invalidSubLaneGroupMaskEntities.Dispose();
+            invalidCustomTrafficLightsEntities.Dispose();
+
+            return (affectedCount, subLaneGroupMaskCount, customTrafficLightsCount);
+        }
+
+        private int DetectOrphanedData(Systems.UI.UISystem uiSystem)
+        {
+            int orphanedCount = 0;
+
+            var orphanedEdgeGroupMaskQuery = SystemAPI.QueryBuilder()
+                .WithAll<EdgeGroupMask>()
+                .WithNone<CustomTrafficLights>()
+                .Build();
+
+            var orphanedSubLaneGroupMaskQuery = SystemAPI.QueryBuilder()
+                .WithAll<SubLaneGroupMask>()
+                .WithNone<CustomTrafficLights>()
+                .Build();
+
+            var orphanedCustomPhaseDataQuery = SystemAPI.QueryBuilder()
+                .WithAll<CustomPhaseData>()
+                .WithNone<CustomTrafficLights>()
+                .Build();
+
+            if (!orphanedEdgeGroupMaskQuery.IsEmptyIgnoreFilter)
+            {
+                using (var entities = orphanedEdgeGroupMaskQuery.ToEntityArray(Allocator.Temp))
+                {
+                    foreach (var entity in entities)
+                    {
+                        if (EntityManager.HasComponent<Node>(entity))
+                        {
+                            uiSystem.AddToAffectedIntersections(entity);
+                            orphanedCount++;
+                            Mod.m_Log.Warn($"Detected orphaned EdgeGroupMask on node {entity.Index} - CustomTrafficLights component failed to deserialize");
+                            EntityManager.AddComponentData(entity, new CustomTrafficLights());
+                        }
+                    }
+                }
+            }
+
+            if (!orphanedSubLaneGroupMaskQuery.IsEmptyIgnoreFilter)
+            {
+                using (var entities = orphanedSubLaneGroupMaskQuery.ToEntityArray(Allocator.Temp))
+                {
+                    foreach (var entity in entities)
+                    {
+                        if (EntityManager.HasComponent<Node>(entity) && !uiSystem.AffectedIntersections.Contains(entity))
+                        {
+                            uiSystem.AddToAffectedIntersections(entity);
+                            orphanedCount++;
+                            Mod.m_Log.Warn($"Detected orphaned SubLaneGroupMask on node {entity.Index} - CustomTrafficLights component failed to deserialize");
+                            EntityManager.AddComponentData(entity, new CustomTrafficLights());
+                        }
+                    }
+                }
+            }
+
+            if (!orphanedCustomPhaseDataQuery.IsEmptyIgnoreFilter)
+            {
+                using (var entities = orphanedCustomPhaseDataQuery.ToEntityArray(Allocator.Temp))
+                {
+                    foreach (var entity in entities)
+                    {
+                        if (EntityManager.HasComponent<Node>(entity) && !uiSystem.AffectedIntersections.Contains(entity))
+                        {
+                            uiSystem.AddToAffectedIntersections(entity);
+                            orphanedCount++;
+                            Mod.m_Log.Warn($"Detected orphaned CustomPhaseData on node {entity.Index} - CustomTrafficLights component failed to deserialize");
+                            EntityManager.AddComponentData(entity, new CustomTrafficLights());
+                        }
+                    }
+                }
+            }
+
+            return orphanedCount;
         }
 
         private void MigrateToV1()
@@ -223,6 +403,11 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
         {
             Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} preparing migration to V2, data version: {_version}");
             MigrateTrafficGroupMembers();
+        }
+        private void MigrateToV5()
+        {
+            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} preparing migration to V5, data version: {_version}");
+            MigrateCustomTrafficLights(_uiSystem);
         }
 
         private void MigrateTrafficGroupMembers()
@@ -280,6 +465,74 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
             }
             
             Mod.m_Log.Info($"Migrated {migratedCount} TrafficGroupMember entities");
+        }
+
+        private void MigrateCustomTrafficLights(Systems.UI.UISystem uiSystem)
+        {
+            Mod.m_Log.Info($"Migrating CustomTrafficLights data");
+            
+            int migratedCount = 0;
+            int affectedCount = 0;
+            
+            using (var entities = _customTrafficLightsQuery.ToEntityArray(Allocator.Temp))
+            {
+                foreach (var entity in entities)
+                {
+                    if (!EntityManager.HasComponent<Node>(entity))
+                    {
+                        continue;
+                    }
+                    
+                    var customTrafficLights = EntityManager.GetComponentData<CustomTrafficLights>(entity);
+                    bool needsUpdate = false;
+                    bool isAffected = false;
+                    
+                    var pattern = customTrafficLights.GetPatternOnly();
+                    if ((uint)pattern > (uint)CustomTrafficLights.Patterns.CustomPhase)
+                    {
+                        customTrafficLights.SetPatternOnly(CustomTrafficLights.Patterns.Vanilla);
+                        needsUpdate = true;
+                        isAffected = true;
+                    }
+                    
+                    var mode = customTrafficLights.GetModeOnly();
+                    if ((uint)mode > (uint)CustomTrafficLights.TrafficMode.FixedTimed)
+                    {
+                        customTrafficLights.SetModeOnly(CustomTrafficLights.TrafficMode.Dynamic);
+                        needsUpdate = true;
+                        isAffected = true;
+                    }
+                    
+                    if (customTrafficLights.m_PedestrianPhaseDurationMultiplier < 0 || 
+                        customTrafficLights.m_PedestrianPhaseDurationMultiplier > 10)
+                    {
+                        customTrafficLights.SetPedestrianPhaseDurationMultiplier(1f);
+                        needsUpdate = true;
+                        isAffected = true;
+                    }
+                    
+                    if (customTrafficLights.m_ManualSignalGroup > 16)
+                    {
+                        customTrafficLights = new CustomTrafficLights();
+                        needsUpdate = true;
+                        isAffected = true;
+                    }
+                    
+                    if (needsUpdate)
+                    {
+                        EntityManager.SetComponentData(entity, customTrafficLights);
+                        migratedCount++;
+                    }
+                    
+                    if (isAffected)
+                    {
+                        uiSystem.AddToAffectedIntersections(entity);
+                        affectedCount++;
+                    }
+                }
+            }
+            
+            Mod.m_Log.Info($"Migrated {migratedCount} CustomTrafficLights entities, {affectedCount} affected");
         }
 
         private void MigrateSignalDelayData()
@@ -546,6 +799,6 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
         public const int V4 = 4;
         public const int V5 = 5; 
          
-        public const int Current = V3;
+        public const int Current = V5;
     }
 }

@@ -88,6 +88,7 @@ export interface MainPanelItemCustomPhaseHeader {
   itemType: "customPhaseHeader",
   trafficLightMode: number,
   phaseCount: number,
+  isCoordinatedFollower?: boolean,
 }
 
 export interface MainPanelItemCustomPhase {

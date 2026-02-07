@@ -276,6 +276,49 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
 #if WITH_BURST
         [BurstCompile]
 #endif
+        private struct ValidateSubLaneGroupMaskJob : IJobChunk
+        {
+            [ReadOnly] public EntityTypeHandle entityTypeHandle;
+            public BufferTypeHandle<SubLaneGroupMask> subLaneGroupMaskTypeHandle;
+            [ReadOnly] public EntityStorageInfoLookup entityInfoLookup;
+            public NativeQueue<Entity>.ParallelWriter invalidEntities;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                NativeArray<Entity> entities = chunk.GetNativeArray(entityTypeHandle);
+                BufferAccessor<SubLaneGroupMask> subLaneGroupMaskAccessor = chunk.GetBufferAccessor(ref subLaneGroupMaskTypeHandle);
+
+                ChunkEntityEnumerator enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out int index))
+                {
+                    Entity entity = entities[index];
+                    DynamicBuffer<SubLaneGroupMask> buffer = subLaneGroupMaskAccessor[index];
+                    bool bufferModified = false;
+
+                    for (int i = buffer.Length - 1; i >= 0; i--)
+                    {
+                        SubLaneGroupMask mask = buffer[i];
+                        if (mask.m_SubLane != Entity.Null)
+                        {
+                            if (!entityInfoLookup.Exists(mask.m_SubLane))
+                            {
+                                buffer.RemoveAt(i);
+                                bufferModified = true;
+                            }
+                        }
+                    }
+
+                    if (bufferModified)
+                    {
+                        invalidEntities.Enqueue(entity);
+                    }
+                }
+            }
+        }
+
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct ValidateCustomPhaseDataJob : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;

@@ -20,6 +20,8 @@ namespace C2VM.TrafficLightsEnhancement.Systems.UI;
 
 public partial class UISystem: ExtendedUISystemBase
 {
+    public static UISystem Instance { get; private set; }
+
     public enum MainPanelState : int
     {
         Hidden = 0,
@@ -85,6 +87,7 @@ public partial class UISystem: ExtendedUISystemBase
     protected override void OnCreate()
     {
         base.OnCreate();
+        Instance = this;
         m_TypeHandle.AssignHandles(ref base.CheckedStateRef);
 
         m_Camera = Camera.main;
@@ -93,6 +96,7 @@ public partial class UISystem: ExtendedUISystemBase
 
         m_WorldPositionList = [];
         m_EdgeInfoDictionary = [];
+        m_AffectedIntersections = [];
 
         m_DebugDisplayGroup = -1;
 

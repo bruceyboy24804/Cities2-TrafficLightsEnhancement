@@ -190,3 +190,27 @@
     background-color: var(--hoverColorBright);
   }
 }
+
+.migrationNotice {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8rem 12rem;
+  margin: 4rem;
+  background-color: rgba(255, 165, 0, 0.15);
+  border-left-width: 3rem;
+  border-left-style: solid;
+  border-left-color: orange;
+  border-radius: 4rem;
+  color: var(--textColor);
+  font-size: var(--fontSizeS);
+  
+  &:hover {
+    background-color: rgba(255, 165, 0, 0.25);
+  }
+}
+
+.migrationIcon {
+  margin-right: 8rem;
+  font-size: var(--fontSizeM);
+}

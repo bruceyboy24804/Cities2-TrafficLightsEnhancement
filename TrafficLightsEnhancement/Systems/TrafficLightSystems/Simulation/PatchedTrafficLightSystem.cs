@@ -143,10 +143,21 @@ public partial class PatchedTrafficLightSystem : GameSystemBase
                     DynamicBuffer<CustomPhaseData> customPhaseDataBuffer = customPhaseDataBufferAccessor[i];
                     CustomStateMachine.CalculatePriority(this, subLanes, customPhaseDataBuffer);
                     CustomStateMachine.CalculateFlow(this, unfilteredChunkIndex, subLanes, trafficLights, customPhaseDataBuffer);
-                    if (CustomStateMachine.UpdateTrafficLightState(ref trafficLights, ref customTrafficLights, customPhaseDataBuffer))
+                    
+                    Entity currentEntity = nativeArray[i];
+                    if (CustomStateMachine.ShouldFollowLeader(this, currentEntity, out Entity leaderEntity))
                     {
+                        CustomStateMachine.SyncSignalGroupWithLeader(this, currentEntity, leaderEntity, ref trafficLights, ref customTrafficLights);
                         UpdateLaneSignals(laneSignals, trafficLights);
                         UpdateTrafficLightObjects(subObjects, trafficLights);
+                    }
+                    else
+                    {
+                        if (CustomStateMachine.UpdateTrafficLightState(ref trafficLights, ref customTrafficLights, customPhaseDataBuffer))
+                        {
+                            UpdateLaneSignals(laneSignals, trafficLights);
+                            UpdateTrafficLightObjects(subObjects, trafficLights);
+                        }
                     }
                 }
                 else if (UpdateTrafficLightState(laneSignals, moveableBridgeData, ref trafficLights, ref customTrafficLights))

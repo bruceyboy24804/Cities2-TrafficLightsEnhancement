@@ -43,6 +43,13 @@ public partial class UISystem
 
     private GetterValueBinding<string> m_UserPresetsBinding;
 
+    private GetterValueBinding<List<Entity>> m_AffectedEntitiesBinding;
+    private List<Entity> m_AffectedIntersections;
+
+    public List<Entity> AffectedIntersections => m_AffectedIntersections;
+
+    private bool HasLoadingErrors => m_AffectedIntersections.Count > 0;
+
     private void AddUIBindings()
     {
         m_MainPanelBinding = CreateBinding("GetMainPanel", GetMainPanel, autoUpdate: false);
@@ -136,6 +143,12 @@ public partial class UISystem
         m_AddMemberStateBinding = CreateBinding("GetAddMemberState", GetAddMemberState, autoUpdate: false);
         m_SelectMemberStateBinding = CreateBinding("GetSelectMemberState", GetSelectMemberState, autoUpdate: false);
         m_UncoveredConnectionsBinding = CreateBinding("GetUncoveredConnections", GetUncoveredConnections, autoUpdate: false);
+        var affectedEntitiesBindingKey = UseKeyPrefixes ? "BINDING:GetAffectedEntities" : "GetAffectedEntities";
+        AddUpdateBinding(m_AffectedEntitiesBinding = new GetterValueBinding<List<Entity>>(Mod.modName, affectedEntitiesBindingKey, () => AffectedIntersections, new ListWriter<Entity>()));
+        var hasMigrationIssuesBindingKey = UseKeyPrefixes ? "BINDING:HasMigrationIssues" : "HasMigrationIssues";
+        AddUpdateBinding(new GetterValueBinding<bool>(Mod.modName, hasMigrationIssuesBindingKey, () => HasLoadingErrors));
+        CreateTrigger<string>("NavigateToEntity", CallNavigateToEntity);
+        CreateTrigger<int>("RemoveAffectedEntity", RemoveAffectedEntity);
     }
 
     protected string GetUncoveredConnections()
@@ -407,15 +420,51 @@ public partial class UISystem
             EntityManager.TryGetComponent(m_SelectedEntity, out TrafficLights trafficLights);
             EntityManager.TryGetComponent(m_SelectedEntity, out CustomTrafficLights customTrafficLights);
             
+            bool isCoordinatedFollower = false;
+            Entity leaderEntity = Entity.Null;
+            DynamicBuffer<CustomPhaseData> leaderPhaseBuffer = default;
+            CustomTrafficLights leaderCustomTrafficLights = default;
+            bool hasLeaderData = false;
+            
+            if (EntityManager.TryGetComponent(m_SelectedEntity, out TrafficGroupMember member))
+            {
+                if (!member.m_IsGroupLeader && member.m_GroupEntity != Unity.Entities.Entity.Null)
+                {
+                    if (EntityManager.TryGetComponent(member.m_GroupEntity, out TrafficGroup group))
+                    {
+                        isCoordinatedFollower = group.m_IsCoordinated;
+                        if (isCoordinatedFollower)
+                        {
+                            leaderEntity = member.m_LeaderEntity;
+                            if (leaderEntity != Entity.Null && 
+                                EntityManager.TryGetBuffer(leaderEntity, true, out leaderPhaseBuffer) &&
+                                EntityManager.TryGetComponent(leaderEntity, out leaderCustomTrafficLights))
+                            {
+                                hasLeaderData = true;
+                            }
+                        }
+                    }
+                }
+            }
             
             menu.items.Add(new UITypes.ItemCustomPhaseHeader
             {
                 trafficLightMode = customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed ? 1 : 0,
-                phaseCount = customPhaseDataBuffer.Length
+                phaseCount = customPhaseDataBuffer.Length,
+                isCoordinatedFollower = isCoordinatedFollower
             });
             
             for (int i = 0; i < customPhaseDataBuffer.Length; i++)
             {
+                // For coordinated followers, use leader's timing settings if available
+                var sourcePhaseData = customPhaseDataBuffer[i];
+                var sourceCustomTrafficLights = customTrafficLights;
+                if (hasLeaderData && i < leaderPhaseBuffer.Length)
+                {
+                    sourcePhaseData = leaderPhaseBuffer[i];
+                    sourceCustomTrafficLights = leaderCustomTrafficLights;
+                }
+                
                 menu.items.Add(new UITypes.ItemCustomPhase
                 {
                     activeIndex = m_ActiveEditingCustomPhaseIndexBinding.Value,
@@ -433,19 +482,19 @@ public partial class UISystem
                     trackLaneOccupied = customPhaseDataBuffer[i].m_TrackLaneOccupied,
                     pedestrianLaneOccupied = customPhaseDataBuffer[i].m_PedestrianLaneOccupied,
                     weightedWaiting = customPhaseDataBuffer[i].m_WeightedWaiting,
-                    targetDuration = customPhaseDataBuffer[i].m_TargetDuration,
-                    priority = customPhaseDataBuffer[i].m_Priority,
-                    minimumDuration = customPhaseDataBuffer[i].m_MinimumDuration,
-                    maximumDuration = customPhaseDataBuffer[i].m_MaximumDuration,
-                    targetDurationMultiplier = customPhaseDataBuffer[i].m_TargetDurationMultiplier,
-                    intervalExponent = customPhaseDataBuffer[i].m_IntervalExponent,
+                    targetDuration = sourcePhaseData.m_TargetDuration,
+                    priority = sourcePhaseData.m_Priority,
+                    minimumDuration = sourcePhaseData.m_MinimumDuration,
+                    maximumDuration = sourcePhaseData.m_MaximumDuration,
+                    targetDurationMultiplier = sourcePhaseData.m_TargetDurationMultiplier,
+                    intervalExponent = sourcePhaseData.m_IntervalExponent,
                     linkedWithNextPhase = (customPhaseDataBuffer[i].m_Options & CustomPhaseData.Options.LinkedWithNextPhase) != 0,
                     endPhasePrematurely = (customPhaseDataBuffer[i].m_Options & CustomPhaseData.Options.EndPhasePrematurely) != 0,
                     bicycleLaneOccupied = customPhaseDataBuffer[i].m_BicycleLaneOccupied,
-                    changeMetric = (int)customPhaseDataBuffer[i].m_ChangeMetric,
-                    waitFlowBalance = customPhaseDataBuffer[i].m_WaitFlowBalance,
-                    trafficLightMode = customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed ? 1 : 0,
-                    smartPhaseSelection = (customTrafficLights.GetOptions() & CustomTrafficLights.TrafficOptions.SmartPhaseSelection) != 0,
+                    changeMetric = (int)sourcePhaseData.m_ChangeMetric,
+                    waitFlowBalance = sourcePhaseData.m_WaitFlowBalance,
+                    trafficLightMode = sourceCustomTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed ? 1 : 0,
+                    smartPhaseSelection = (sourceCustomTrafficLights.GetOptions() & CustomTrafficLights.TrafficOptions.SmartPhaseSelection) != 0,
                     carActive = IsTrafficTypeActive(m_SelectedEntity, i, "car"),
                     publicCarActive = IsTrafficTypeActive(m_SelectedEntity, i, "publicCar"),
                     trackActive = IsTrafficTypeActive(m_SelectedEntity, i, "track"),
@@ -462,12 +511,12 @@ public partial class UISystem
                     pedestrianCloseDelay = customPhaseDataBuffer[i].m_PedestrianCloseDelay,
                     bicycleOpenDelay = customPhaseDataBuffer[i].m_BicycleOpenDelay,
                     bicycleCloseDelay = customPhaseDataBuffer[i].m_BicycleCloseDelay,
-                    carWeight = customPhaseDataBuffer[i].m_CarWeight,
-                    publicCarWeight = customPhaseDataBuffer[i].m_PublicCarWeight,
-                    trackWeight = customPhaseDataBuffer[i].m_TrackWeight,
-                    pedestrianWeight = customPhaseDataBuffer[i].m_PedestrianWeight,
-                    bicycleWeight = customPhaseDataBuffer[i].m_BicycleWeight,
-                    smoothingFactor = customPhaseDataBuffer[i].m_SmoothingFactor,
+                    carWeight = sourcePhaseData.m_CarWeight,
+                    publicCarWeight = sourcePhaseData.m_PublicCarWeight,
+                    trackWeight = sourcePhaseData.m_TrackWeight,
+                    pedestrianWeight = sourcePhaseData.m_PedestrianWeight,
+                    bicycleWeight = sourcePhaseData.m_BicycleWeight,
+                    smoothingFactor = sourcePhaseData.m_SmoothingFactor,
                     flowRatio = customPhaseDataBuffer[i].m_FlowRatio,
                     waitRatio = customPhaseDataBuffer[i].m_WaitRatio
                 });
@@ -705,7 +754,7 @@ public partial class UISystem
         bool isCustomPhasePattern = (selectedPattern & (CustomTrafficLights.Patterns)0xFFFF) == CustomTrafficLights.Patterns.CustomPhase;
         
         m_CustomTrafficLights.SetPattern(selectedPattern);
-        if (m_CustomTrafficLights.GetPatternOnly() != CustomTrafficLights.Patterns.Vanilla)
+        if (m_CustomTrafficLights.GetPattern() != CustomTrafficLights.Patterns.Vanilla)
         {
             var currentPattern = m_CustomTrafficLights.GetPattern();
             currentPattern = currentPattern & ~CustomTrafficLights.Patterns.CentreTurnGiveWay;
@@ -2177,6 +2226,8 @@ public partial class UISystem
 
     
 
+    
+
     protected void CallApplyBestPhase(string input)
     {
         Entity groupEntity = Entity.Null;
@@ -2448,7 +2499,7 @@ public partial class UISystem
             {
                 EntityManager.AddComponent<SubLaneGroupMask>(junctionEntity);
             }
-            customTrafficLights.SetPattern((uint)CustomTrafficLights.Patterns.CustomPhase);
+            customTrafficLights.SetPattern(CustomTrafficLights.Patterns.CustomPhase);
         }
         if (customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed)
         {
@@ -2631,5 +2682,38 @@ public partial class UISystem
 
         Mod.m_Settings?.UpdateUserPresetName(input.presetId, input.name);
         m_UserPresetsBinding?.Update();
+    }
+
+    private void CallNavigateToEntity(string jsonString)
+    {
+        var input = JsonConvert.DeserializeAnonymousType(jsonString, new { index = 0, version = 0 });
+        if (input == null)
+        {
+            return;
+        }
+        var entity = new Entity { Index = input.index, Version = input.version };
+        NavigateTo(entity);
+    }
+
+    private void RemoveAffectedEntity(int index)
+    {
+        if (index < 0)
+        {
+            m_AffectedIntersections.Clear();
+        }
+        else if (index < m_AffectedIntersections.Count)
+        {
+            m_AffectedIntersections.RemoveAt(index);
+        }
+        m_AffectedEntitiesBinding?.TriggerUpdate();
+    }
+
+    public void AddToAffectedIntersections(Entity entity)
+    {
+        if (!m_AffectedIntersections.Contains(entity))
+        {
+            m_AffectedIntersections.Add(entity);
+            m_AffectedEntitiesBinding?.TriggerUpdate();
+        }
     }
 }
