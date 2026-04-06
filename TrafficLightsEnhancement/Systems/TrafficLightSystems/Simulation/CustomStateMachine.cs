@@ -301,18 +301,19 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
         public static byte GetNextSignalGroup(byte currentGroup, DynamicBuffer<CustomPhaseData> customPhaseDataBuffer, CustomTrafficLights customTrafficLights, out bool linked)
         {
             linked = false;
-            byte nextGroup = 0;
-            int maxPriority = -1;
-            float maxWaiting = -1;
             if (customTrafficLights.m_ManualSignalGroup > 0 && customTrafficLights.m_ManualSignalGroup - 1 < customPhaseDataBuffer.Length)
             {
                 return customTrafficLights.m_ManualSignalGroup;
             }
-            if (customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed && customPhaseDataBuffer.Length > 0)
+            if (customPhaseDataBuffer.Length == 0)
             {
-                int currentStep = currentGroup - 1;
-                if (currentStep < 0) currentStep = 0;
-                
+                return 0;
+            }
+            int currentStep = currentGroup - 1;
+            if (currentStep < 0) currentStep = 0;
+
+            if (customTrafficLights.GetMode() == CustomTrafficLights.TrafficMode.FixedTimed)
+            {
                 bool useSmartSelection = (customTrafficLights.GetOptions() & CustomTrafficLights.TrafficOptions.SmartPhaseSelection) != 0;
                 
                 if (useSmartSelection)
@@ -330,59 +331,28 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
                     return (byte)(nextStep + 1);
                 }
             }
-            for (int i = 0; i < customPhaseDataBuffer.Length; i++)
+            // Dynamic mode: cycle sequentially, skip phases with min=0 and no demand
+            for (int attempt = 0; attempt < customPhaseDataBuffer.Length; attempt++)
             {
-                CustomPhaseData phase = customPhaseDataBuffer[i];
-                float weightedWaiting = phase.m_WeightedWaiting;
-                if (phase.m_Priority > maxPriority)
+                int candidateStep = (currentStep + 1 + attempt) % customPhaseDataBuffer.Length;
+                CustomPhaseData candidatePhase = customPhaseDataBuffer[candidateStep];
+
+                // Always run phases with minimum > 0
+                if (candidatePhase.m_MinimumDuration > 0)
                 {
-                    nextGroup = (byte)(i + 1);
-                    maxPriority = phase.m_Priority;
-                    maxWaiting = weightedWaiting;
+                    return (byte)(candidateStep + 1);
                 }
-                else if (phase.m_Priority == maxPriority && weightedWaiting > maxWaiting)
+
+                // Min=0: run only if there's demand (vehicles waiting or priority)
+                if (candidatePhase.m_Priority > 0 || candidatePhase.WeightedLaneOccupied() > 0)
                 {
-                    nextGroup = (byte)(i + 1);
-                    maxWaiting = weightedWaiting;
+                    return (byte)(candidateStep + 1);
                 }
             }
 
-            int linkedPriority = -1;
-            byte linkedNextGroup = 0;
-            for (int i = currentGroup - 1; i >= 0 && i < customPhaseDataBuffer.Length - 1; i++)
-            {
-                CustomPhaseData phase = customPhaseDataBuffer[i];
-                if ((phase.m_Options & CustomPhaseData.Options.LinkedWithNextPhase) == 0)
-                {
-                    break;
-                }
-
-                CustomPhaseData nextPhase = customPhaseDataBuffer[i + 1];
-                if (linkedNextGroup == 0 && nextPhase.m_Priority > 0)
-                {
-                    linkedNextGroup = (byte)(i + 2);
-                }
-                linkedPriority = math.max(linkedPriority, nextPhase.m_Priority);
-            }
-            if (linkedNextGroup > 0 && linkedPriority >= maxPriority)
-            {
-                linked = true;
-                return linkedNextGroup;
-            }
-
-            for (int i = nextGroup - 2; i >= 0; i--)
-            {
-                CustomPhaseData phase = customPhaseDataBuffer[i];
-                if ((phase.m_Options & CustomPhaseData.Options.LinkedWithNextPhase) == 0)
-                {
-                    break;
-                }
-                if (phase.m_Priority > 0)
-                {
-                    nextGroup = (byte)(i + 1);
-                }
-            }
-            return nextGroup;
+            // All phases skippable with no demand — default to next sequential
+            int fallbackStep = (currentStep + 1) % customPhaseDataBuffer.Length;
+            return (byte)(fallbackStep + 1);
         }
 
         private static int MaxPriority(DynamicBuffer<CustomPhaseData> customPhaseDataBuffer)
@@ -588,9 +558,9 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
         public static bool ShouldFollowLeader(
             PatchedTrafficLightSystem.UpdateTrafficLightsJob job,
             Entity currentEntity,
-            out Entity leaderEntity)
+            out Entity groupEntity)
         {
-            leaderEntity = Entity.Null;
+            groupEntity = Entity.Null;
             
             if (!job.m_ExtraTypeHandle.m_TrafficGroupMember.TryGetComponent(currentEntity, out var member))
             {
@@ -607,13 +577,13 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
                 return false;
             }
 
-            if (!group.m_IsCoordinated)
+            if (!group.m_IsCoordinated || group.m_MasterSignalGroupCount == 0)
             {
                 return false;
             }
 
-            leaderEntity = member.m_LeaderEntity;
-            return leaderEntity != Entity.Null && leaderEntity != currentEntity;
+            groupEntity = member.m_GroupEntity;
+            return true;
         }
 
         public static void AggregateGroupMemberPriority(
@@ -689,52 +659,68 @@ namespace C2VM.TrafficLightsEnhancement.Systems. TrafficLightSystems. Simulation
         public static void SyncSignalGroupWithLeader(
             PatchedTrafficLightSystem.UpdateTrafficLightsJob job,
             Entity currentEntity,
-            Entity leaderEntity,
+            Entity groupEntity,
             ref TrafficLights trafficLights,
             ref CustomTrafficLights customTrafficLights)
         {
-            if (!job.m_ExtraTypeHandle.m_TrafficLightsLookup.TryGetComponent(leaderEntity, out var leaderTrafficLights))
+            if (!job.m_ExtraTypeHandle.m_TrafficGroup.TryGetComponent(groupEntity, out var group))
             {
                 return;
             }
 
-            int phaseOffset = 0;
-            if (job.m_ExtraTypeHandle.m_TrafficGroupMember.TryGetComponent(currentEntity, out var member))
+            if (!job.m_ExtraTypeHandle.m_TrafficGroupMember.TryGetComponent(currentEntity, out var member))
             {
-                phaseOffset = member.m_PhaseOffset;
+                return;
             }
 
-            ApplyPhaseOffset(job, currentEntity, leaderEntity, ref trafficLights, ref customTrafficLights, phaseOffset);
+            int followerPhaseCount = trafficLights.m_SignalGroupCount;
+            int masterPhaseCount = group.m_MasterSignalGroupCount;
+
+            if (group.m_GreenWaveEnabled && member.m_SignalDelay != 0)
+            {
+                // Green wave mode: use offset-based staggering
+                int signalDelay = GetSignalDelayForJunction(job, currentEntity, trafficLights.m_CurrentSignalGroup);
+                int mappedPhase = WrapPhase(group.m_MasterPhase + member.m_PhaseOffset, followerPhaseCount);
+                int mappedNext = WrapPhase(group.m_MasterNextPhase + member.m_PhaseOffset, followerPhaseCount);
+
+                trafficLights.m_State = group.m_MasterState;
+                trafficLights.m_CurrentSignalGroup = (byte)mappedPhase;
+                trafficLights.m_NextSignalGroup = (byte)mappedNext;
+
+                int adjustedTimer = group.m_MasterTimer - signalDelay;
+                trafficLights.m_Timer = (byte)math.clamp(adjustedTimer, 0, 255);
+
+                int adjustedCustomTimer = (int)group.m_MasterCustomTimer - signalDelay;
+                customTrafficLights.m_Timer = (uint)math.max(0, adjustedCustomTimer);
+            }
+            else
+            {
+                // TMPE-style lockstep: mirror master state directly
+                int mappedPhase = WrapPhase(group.m_MasterPhase, followerPhaseCount);
+                int mappedNext = WrapPhase(group.m_MasterNextPhase, followerPhaseCount);
+
+                trafficLights.m_State = group.m_MasterState;
+                trafficLights.m_CurrentSignalGroup = (byte)mappedPhase;
+                trafficLights.m_NextSignalGroup = (byte)mappedNext;
+                trafficLights.m_Timer = group.m_MasterTimer;
+                customTrafficLights.m_Timer = group.m_MasterCustomTimer;
+            }
         }
 
-        public static void ApplyPhaseOffset(PatchedTrafficLightSystem.UpdateTrafficLightsJob job, Entity currentEntity, Entity leaderEntity, ref TrafficLights trafficLights, ref CustomTrafficLights customTrafficLights, int phaseOffset)
+        // TMPE-style: simple wrap of a 1-indexed phase into follower's valid range
+        private static int WrapPhase(int phase, int phaseCount)
         {
-            if (!job.m_ExtraTypeHandle.m_TrafficLightsLookup.TryGetComponent(leaderEntity, out var leaderTrafficLights))
+            if (phaseCount <= 0)
             {
-                return;
+                return 1;
             }
-
-            if (job.m_ExtraTypeHandle.m_TrafficGroupMember.TryGetComponent(currentEntity, out var member))
+            if (phase <= 0)
             {
-                phaseOffset = member.m_PhaseOffset;
+                return 1;
             }
-
-            int signalDelay = GetSignalDelayForJunction(job, currentEntity, trafficLights.m_CurrentSignalGroup);
-            int totalOffset = phaseOffset + signalDelay;
-
-            trafficLights.m_State = leaderTrafficLights.m_State;
-            trafficLights.m_CurrentSignalGroup = leaderTrafficLights.m_CurrentSignalGroup;
-            trafficLights.m_NextSignalGroup = leaderTrafficLights.m_NextSignalGroup;
-            
-            int adjustedTimer = leaderTrafficLights.m_Timer - totalOffset;
-            trafficLights.m_Timer = (byte)math.clamp(adjustedTimer, 0, 255);
-
-            if (job.m_ExtraTypeHandle.m_CustomTrafficLightsLookup.TryGetComponent(leaderEntity, out var leaderCustomTrafficLights))
-            {
-                int adjustedCustomTimer = (int)leaderCustomTrafficLights.m_Timer - totalOffset;
-                customTrafficLights.m_Timer = (uint)math.max(0, adjustedCustomTimer);
-                customTrafficLights.m_ManualSignalGroup = leaderCustomTrafficLights.m_ManualSignalGroup;
-            }
+            int wrapped = ((phase - 1) % phaseCount) + 1;
+            if (wrapped <= 0) wrapped += phaseCount;
+            return wrapped;
         }
 
         private static int GetSignalDelayForJunction(PatchedTrafficLightSystem.UpdateTrafficLightsJob job, Entity junctionEntity, byte currentSignalGroup, bool isClosingDelay = true)

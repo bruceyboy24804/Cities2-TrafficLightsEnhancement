@@ -1,5 +1,6 @@
 using C2VM.TrafficLightsEnhancement.Systems.Serialization;
 using Colossal.Serialization.Entities;
+using Game.Net;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Collections;
@@ -20,6 +21,15 @@ public struct TrafficGroup : IComponentData, ISerializable
     public float m_CycleTimer;        
     
     public uint m_CreationTime;
+
+    // Runtime-only master clock fields (not serialized)
+    // Populated each frame by TrafficGroupSystem from the leader
+    public byte m_MasterPhase;
+    public byte m_MasterNextPhase;
+    public TrafficLightState m_MasterState;
+    public byte m_MasterTimer;
+    public uint m_MasterCustomTimer;
+    public byte m_MasterSignalGroupCount;
 
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
@@ -46,7 +56,12 @@ public struct TrafficGroup : IComponentData, ISerializable
         m_CycleLength = 16f;
         m_LastSyncTime = 0f;
         m_CycleTimer = 0f;
-        
+        m_MasterPhase = 0;
+        m_MasterNextPhase = 0;
+        m_MasterState = TrafficLightState.None;
+        m_MasterTimer = 0;
+        m_MasterCustomTimer = 0;
+        m_MasterSignalGroupCount = 0;
         
         reader.Read(out int version);
         reader.Read(out m_IsCoordinated);
@@ -70,6 +85,12 @@ public struct TrafficGroup : IComponentData, ISerializable
         m_CycleLength = 16f;
         m_LastSyncTime = 0f;
         m_CycleTimer = 0f;
+        m_MasterPhase = 0;
+        m_MasterNextPhase = 0;
+        m_MasterState = TrafficLightState.None;
+        m_MasterTimer = 0;
+        m_MasterCustomTimer = 0;
+        m_MasterSignalGroupCount = 0;
     }
 
     public TrafficGroup(bool isCoordinated = false, bool greenWaveEnabled = false, float greenWaveSpeed = 50f, float greenWaveOffset = 0f, float maxCoordinationDistance = 500f, float cycleLength = 16f)
@@ -83,6 +104,12 @@ public struct TrafficGroup : IComponentData, ISerializable
         m_CycleLength = cycleLength;
         m_LastSyncTime = 0f;
         m_CycleTimer = 0f;
+        m_MasterPhase = 0;
+        m_MasterNextPhase = 0;
+        m_MasterState = TrafficLightState.None;
+        m_MasterTimer = 0;
+        m_MasterCustomTimer = 0;
+        m_MasterSignalGroupCount = 0;
     }
 }
 

@@ -105,14 +105,14 @@ namespace C2VM.TrafficLightsEnhancement.Utils
 							}
 							catch (Exception ex)
 							{
-								Mod.m_Log.Info($"[TLE] Error loading preset {file}: {ex.Message}");
+								Mod.log.Info($"[TLE] Error loading preset {file}: {ex.Message}");
 							}
 						}
 					}
 				}
 				catch (Exception ex)
 				{
-					Mod.m_Log.Error($"[TLE] Failed to load user presets: {ex.Message}");
+					Mod.log.Error($"[TLE] Failed to load user presets: {ex.Message}");
 				}
 			}
 		}
@@ -152,7 +152,7 @@ namespace C2VM.TrafficLightsEnhancement.Utils
 			}
 			catch (Exception ex)
 			{
-				Mod.m_Log.Error($"[TLE] Failed to save preset {preset.Name}: {ex.Message}");
+				Mod.log.Error($"[TLE] Failed to save preset {preset.Name}: {ex.Message}");
 			}
 		}
 
@@ -174,7 +174,7 @@ namespace C2VM.TrafficLightsEnhancement.Utils
 					}
 					catch (Exception ex)
 					{
-						Mod.m_Log.Error($"[TLE] Failed to delete preset file: {ex.Message}");
+						Mod.log.Error($"[TLE] Failed to delete preset file: {ex.Message}");
 					}
 					return true;
 				}

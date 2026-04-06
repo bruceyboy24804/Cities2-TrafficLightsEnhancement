@@ -1,6 +1,5 @@
 import { createContext } from "react";
 
-import { defaultLocale } from "./localisations";
 import { CityConfiguration } from "./general";
 
 const defaultCityConfiguration = {
@@ -8,10 +7,8 @@ const defaultCityConfiguration = {
 };
 
 const CityConfigurationContext = createContext<CityConfiguration>(defaultCityConfiguration);
-const LocaleContext = createContext(defaultLocale);
 
 export {
   CityConfigurationContext,
-  defaultCityConfiguration,
-  LocaleContext
+  defaultCityConfiguration
 };

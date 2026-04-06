@@ -1,16 +1,15 @@
-import { CSSProperties, useContext } from "react";
+import { CSSProperties } from "react";
 import styled from "styled-components";
 
 import { callSetActiveCustomPhaseIndex } from "bindings";
 
-import { LocaleContext } from "../../../context";
-import { getString } from "../../../localisations";
+import { useLocalization } from "cs2/l10n";
 
 import Button from "../../common/button";
 import Radio from "../../common/radio";
 import Scrollable from "../../common/scrollable";
 import Divider from "../../main-panel/items/divider";
-import { MainPanelItemCustomPhase, MainPanelItem } from "mods/general";
+import { MainPanelItemCustomPhase } from "mods/general";
 
 const Label = styled.div<{dim?: boolean}>`
   color: ${props => props.dim ? "var(--textColorDim)" : "var(--textColor)"};
@@ -48,7 +47,7 @@ const BackButton = () => {
 };
 
 function Item(props: {data: MainPanelItemCustomPhase}) {
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
   const clickHandler = () => {
     callSetActiveCustomPhaseIndex(JSON.stringify({key: "ManualSignalGroup", value: props.data.index + 1}));
   };
@@ -56,21 +55,21 @@ function Item(props: {data: MainPanelItemCustomPhase}) {
     <Row onClick={clickHandler}>
       <Radio isChecked={props.data.manualSignalGroup == props.data.index + 1} />
       <Label dim={true}>
-        {getString(locale, "Phase") + " #" + (props.data.index + 1)}
+        {(translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Phase]") ?? "Phase") + " #" + (props.data.index + 1)}
       </Label>
     </Row>
   );
 }
 
-export default function ManualControlPanel(props: {items: MainPanelItem[]}) {
-  const locale = useContext(LocaleContext);
+export default function ManualControlPanel(props: {phases: MainPanelItemCustomPhase[]}) {
+  const { translate } = useLocalization();
   return (
     <>
       <Scrollable style={{flex: 1}} contentStyle={ItemContainerStyle}>
         <Row>
-          <Label dim={false}>{getString(locale, "ManualControl")}</Label>
+          <Label dim={false}>{translate("UI.LABEL[C2VM.TrafficLightsEnhancement.ManualControl]") ?? "Manual Control"}</Label>
         </Row>
-        {props.items.map(item => item.itemType == "customPhase" && <Item data={item} />)}
+        {props.phases.map(item => <Item data={item} key={item.index} />)}
       </Scrollable>
       <Divider />
       <BackButton />

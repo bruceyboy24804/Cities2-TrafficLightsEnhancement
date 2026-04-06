@@ -79,7 +79,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Overlay
                 }
                 else
                 {
-                    Mod.m_Log.Error($"{imageResourceName} does not exist.");
+                    Mod.log.Error($"{imageResourceName} does not exist.");
                 }
                 Graphics.CopyTexture(iconTexture, 0, m_IconTextureArray, (int)icon);
                 Object.Destroy(iconTexture);

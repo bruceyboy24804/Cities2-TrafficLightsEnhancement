@@ -1,8 +1,7 @@
-import { MouseEventHandler, useContext } from 'react';
+import { MouseEventHandler } from 'react';
 import styled from 'styled-components';
 
-import { LocaleContext } from '../../context';
-import { getString } from '../../localisations';
+import { useLocalization } from 'cs2/l10n';
 import { Tooltip } from 'cs2/ui';
 
 const ButtonComponent = styled.div<{disabled?: boolean}>`
@@ -20,10 +19,10 @@ const ButtonComponent = styled.div<{disabled?: boolean}>`
 `;
 
 export default function Button(props: {label: string, disabled?: boolean, onClick?: MouseEventHandler<HTMLDivElement>, tooltip?: string}) {
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
   return (
     <Tooltip tooltip={props.tooltip} direction="right">
-      <ButtonComponent {...props}>{getString(locale, props.label)}</ButtonComponent>
+      <ButtonComponent {...props}>{translate(`UI.LABEL[C2VM.TrafficLightsEnhancement.${props.label}]`) ?? props.label}</ButtonComponent>
     </Tooltip>
   );
 }

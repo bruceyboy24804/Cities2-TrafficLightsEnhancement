@@ -938,7 +938,7 @@ public partial class PatchedTrafficLightInitializationSystem : Game.GameSystemBa
             m_LaneSignalData = InternalCompilerInterface.GetComponentLookup(ref __TypeHandle.__Game_Net_LaneSignal_RW_ComponentLookup, ref base.CheckedStateRef),
             m_LeftHandTraffic = m_CityConfigurationSystem.leftHandTraffic,
             m_ExtraTypeHandle = m_ExtraTypeHandle,
-            m_Settings = new Settings.Values(Mod.m_Settings),
+            m_Settings = new Settings.Values(Mod.m_Setting),
             m_CommandBuffer = m_ModificationBarrier.CreateCommandBuffer().AsParallelWriter()
         }, m_TrafficLightsQuery, base.Dependency);
         m_ModificationBarrier.AddJobHandleForProducer(dependency);

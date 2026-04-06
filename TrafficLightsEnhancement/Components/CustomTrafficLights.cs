@@ -78,7 +78,6 @@ public struct CustomTrafficLights : IComponentData, IQueryTypeParameter, ISerial
         m_Options = (TrafficOptions)options;
       }
     }
-    m_ManualSignalGroup = 0;
   }
 
   public CustomTrafficLights()

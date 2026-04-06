@@ -41,4 +41,7 @@
 
 .textBox {
   @include _base.textInputBasic();
+  padding-right: 28rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }

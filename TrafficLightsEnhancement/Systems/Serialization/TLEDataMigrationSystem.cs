@@ -66,7 +66,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 return;
             }
 
-            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} migrating data version {_version}...");
+            Mod.log.Info($"{nameof(TLEDataMigrationSystem)} migrating data version {_version}...");
             _loaded = false;
 
             bool regularValidationOnly = true;
@@ -93,15 +93,18 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
             int orphanedCount = DetectOrphanedData(_uiSystem);
             if (orphanedCount > 0)
             {
-                Mod.m_Log.Warn($"{nameof(TLEDataMigrationSystem)} detected {orphanedCount} intersections with orphaned data (deserialization failure)");
+                Mod.log.Warn($"{nameof(TLEDataMigrationSystem)} detected {orphanedCount} intersections with orphaned data (deserialization failure)");
             }
 
-            MigrateCustomTrafficLights(_uiSystem);
+            if (!regularValidationOnly)
+            {
+                MigrateCustomTrafficLights(_uiSystem);
+            }
 
             var (affectedCount, subLaneGroupMaskCount, customTrafficLightsCount) = ValidateLoadedData(_uiSystem);
 
             int count = _uiSystem.AffectedIntersections.Count;
-            Mod.m_Log.Info($"Affected entities: {count}");
+            Mod.log.Info($"Affected entities: {count}");
 
             if (count > 0)
             {
@@ -125,11 +128,12 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
             }
 
+            CleanupEmptyGroups();
             CheckGroupsWithMissingPhases();
 
             /*if (affectedCount > 0)
             {
-                Mod.m_Log.Warn($"{nameof(TLEDataMigrationSystem)} found {affectedCount} affected entities of {totalEntities} total");
+                Mod.log.Warn($"{nameof(TLEDataMigrationSystem)} found {affectedCount} affected entities of {totalEntities} total");
                 
                 var messageDialog = new MessageDialog(
                     "Traffic Lights Enhancement - Data Migration",
@@ -142,7 +146,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
 
             if (customTrafficLightsCount > 0)
             {
-                Mod.m_Log.Warn($"{nameof(TLEDataMigrationSystem)} found {customTrafficLightsCount} CustomTrafficLights entities with invalid node references");
+                Mod.log.Warn($"{nameof(TLEDataMigrationSystem)} found {customTrafficLightsCount} CustomTrafficLights entities with invalid node references");
                 
                 var messageDialog = new MessageDialog(
                     "Traffic Lights Enhancement - CustomTrafficLights Migration",
@@ -154,7 +158,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
 
             if (subLaneGroupMaskCount > 0)
             {
-                Mod.m_Log.Warn($"{nameof(TLEDataMigrationSystem)} found {subLaneGroupMaskCount} SubLaneGroupMask entities with invalid sublane references");
+                Mod.log.Warn($"{nameof(TLEDataMigrationSystem)} found {subLaneGroupMaskCount} SubLaneGroupMask entities with invalid sublane references");
                 
                 var messageDialog = new MessageDialog(
                     "Traffic Lights Enhancement - SubLane Migration",
@@ -164,7 +168,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 GameManager.instance.userInterface.appBindings.ShowMessageDialog(messageDialog, null);
             }*/
 
-            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} {(regularValidationOnly ? "validating" : "migrating")} data version {_version} done. Found {affectedCount} affected entities, {customTrafficLightsCount} CustomTrafficLights, {subLaneGroupMaskCount} SubLaneGroupMask entities of {totalEntities} total");
+            Mod.log.Info($"{nameof(TLEDataMigrationSystem)} {(regularValidationOnly ? "validating" : "migrating")} data version {_version} done. Found {affectedCount} affected entities, {customTrafficLightsCount} CustomTrafficLights, {subLaneGroupMaskCount} SubLaneGroupMask entities of {totalEntities} total");
         }
 
         private int CountTotalEntities()
@@ -189,7 +193,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
 
         private (int affectedCount, int subLaneGroupMaskCount, int customTrafficLightsCount) ValidateLoadedData(Systems.UI.UISystem uiSystem)
         {
-            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} preparing validation job, data version: {_version}");
+            Mod.log.Info($"{nameof(TLEDataMigrationSystem)} preparing validation job, data version: {_version}");
 
             var invalidEntities = new NativeQueue<Entity>(Allocator.TempJob);
             var invalidSubLaneGroupMaskEntities = new NativeQueue<Entity>(Allocator.TempJob);
@@ -349,7 +353,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                         {
                             uiSystem.AddToAffectedIntersections(entity);
                             orphanedCount++;
-                            Mod.m_Log.Warn($"Detected orphaned EdgeGroupMask on node {entity.Index} - CustomTrafficLights component failed to deserialize");
+                            Mod.log.Warn($"Detected orphaned EdgeGroupMask on node {entity.Index} - CustomTrafficLights component failed to deserialize");
                             EntityManager.AddComponentData(entity, new CustomTrafficLights());
                         }
                     }
@@ -366,7 +370,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                         {
                             uiSystem.AddToAffectedIntersections(entity);
                             orphanedCount++;
-                            Mod.m_Log.Warn($"Detected orphaned SubLaneGroupMask on node {entity.Index} - CustomTrafficLights component failed to deserialize");
+                            Mod.log.Warn($"Detected orphaned SubLaneGroupMask on node {entity.Index} - CustomTrafficLights component failed to deserialize");
                             EntityManager.AddComponentData(entity, new CustomTrafficLights());
                         }
                     }
@@ -383,7 +387,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                         {
                             uiSystem.AddToAffectedIntersections(entity);
                             orphanedCount++;
-                            Mod.m_Log.Warn($"Detected orphaned CustomPhaseData on node {entity.Index} - CustomTrafficLights component failed to deserialize");
+                            Mod.log.Warn($"Detected orphaned CustomPhaseData on node {entity.Index} - CustomTrafficLights component failed to deserialize");
                             EntityManager.AddComponentData(entity, new CustomTrafficLights());
                         }
                     }
@@ -395,24 +399,24 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
 
         private void MigrateToV1()
         {
-            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} preparing migration to V1, data version: {_version}");
+            Mod.log.Info($"{nameof(TLEDataMigrationSystem)} preparing migration to V1, data version: {_version}");
             MigrateSignalDelayData();
         }
 
         private void MigrateToV2()
         {
-            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} preparing migration to V2, data version: {_version}");
+            Mod.log.Info($"{nameof(TLEDataMigrationSystem)} preparing migration to V2, data version: {_version}");
             MigrateTrafficGroupMembers();
         }
         private void MigrateToV5()
         {
-            Mod.m_Log.Info($"{nameof(TLEDataMigrationSystem)} preparing migration to V5, data version: {_version}");
+            Mod.log.Info($"{nameof(TLEDataMigrationSystem)} preparing migration to V5, data version: {_version}");
             MigrateCustomTrafficLights(_uiSystem);
         }
 
         private void MigrateTrafficGroupMembers()
         {
-            Mod.m_Log.Info($"Migrating TrafficGroupMember data to version {TLEDataVersion.V2}");
+            Mod.log.Info($"Migrating TrafficGroupMember data to version {TLEDataVersion.V2}");
             
             int migratedCount = 0;
             using (var entities = _trafficGroupMemberQuery.ToEntityArray(Allocator.Temp))
@@ -464,12 +468,12 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 }
             }
             
-            Mod.m_Log.Info($"Migrated {migratedCount} TrafficGroupMember entities");
+            Mod.log.Info($"Migrated {migratedCount} TrafficGroupMember entities");
         }
 
         private void MigrateCustomTrafficLights(Systems.UI.UISystem uiSystem)
         {
-            Mod.m_Log.Info($"Migrating CustomTrafficLights data");
+            Mod.log.Info($"Migrating CustomTrafficLights data");
             
             int migratedCount = 0;
             int affectedCount = 0;
@@ -488,7 +492,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     bool isAffected = false;
                     
                     var pattern = customTrafficLights.GetPatternOnly();
-                    if ((uint)pattern > (uint)CustomTrafficLights.Patterns.CustomPhase)
+                    if ((uint)pattern > (uint)CustomTrafficLights.Patterns.FixedTimed)
                     {
                         customTrafficLights.SetPatternOnly(CustomTrafficLights.Patterns.Vanilla);
                         needsUpdate = true;
@@ -532,12 +536,12 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 }
             }
             
-            Mod.m_Log.Info($"Migrated {migratedCount} CustomTrafficLights entities, {affectedCount} affected");
+            Mod.log.Info($"Migrated {migratedCount} CustomTrafficLights entities, {affectedCount} affected");
         }
 
         private void MigrateSignalDelayData()
         {
-            Mod.m_Log.Info($"Migrating SignalDelayData to version {TLEDataVersion.V2}");
+            Mod.log.Info($"Migrating SignalDelayData to version {TLEDataVersion.V2}");
             
             int migratedCount = 0;
             int removedCount = 0;
@@ -594,7 +598,31 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                 }
             }
             
-            Mod.m_Log.Info($"Migrated {migratedCount} SignalDelayData entries, removed {removedCount} invalid entries");
+            Mod.log.Info($"Migrated {migratedCount} SignalDelayData entries, removed {removedCount} invalid entries");
+        }
+
+        private void CleanupEmptyGroups()
+        {
+            var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
+            int destroyedCount = 0;
+
+            using (var groupEntities = _trafficGroupQuery.ToEntityArray(Allocator.Temp))
+            {
+                foreach (var groupEntity in groupEntities)
+                {
+                    int memberCount = trafficGroupSystem.GetGroupMemberCount(groupEntity);
+                    if (memberCount == 0)
+                    {
+                        EntityManager.DestroyEntity(groupEntity);
+                        destroyedCount++;
+                    }
+                }
+            }
+
+            if (destroyedCount > 0)
+            {
+                Mod.log.Info($"Cleaned up {destroyedCount} empty traffic group(s)");
+            }
         }
 
         private void CheckGroupsWithMissingPhases()
@@ -670,7 +698,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
 
             if (affectedGroups.Length > 0)
             {
-                Mod.m_Log.Warn($"Found {affectedGroups.Length} groups with {affectedFollowerCount} followers missing custom phases");
+                Mod.log.Warn($"Found {affectedGroups.Length} groups with {affectedFollowerCount} followers missing custom phases");
 
                 
                 _affectedGroupsForMigration = affectedGroups.ToArray(Allocator.Persistent);
@@ -700,7 +728,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
             var trafficGroupSystem = World.GetOrCreateSystemManaged<TrafficGroupSystem>();
             bool copyFromLeader = result == 0; 
 
-            Mod.m_Log.Info($"User selected {(copyFromLeader ? "copy from leader" : "reset to vanilla")} for affected followers");
+            Mod.log.Info($"User selected {(copyFromLeader ? "copy from leader" : "reset to vanilla")} for affected followers");
 
             foreach (var groupEntity in _affectedGroupsForMigration)
             {
@@ -737,7 +765,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                     {
                         
                         trafficGroupSystem.CopyPhasesToJunction(leaderEntity, memberEntity);
-                        Mod.m_Log.Info($"Copied phases from leader to member {memberEntity.Index}");
+                        Mod.log.Info($"Copied phases from leader to member {memberEntity.Index}");
                     }
                     else
                     {
@@ -755,7 +783,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
                             subLaneMasks.Clear();
                         }
 
-                        Mod.m_Log.Info($"Reset EdgeGroupMask for member {memberEntity.Index} - user must reconfigure");
+                        Mod.log.Info($"Reset EdgeGroupMask for member {memberEntity.Index} - user must reconfigure");
                     }
 
                     EntityManager.AddComponentData(memberEntity, default(Updated));
@@ -776,13 +804,13 @@ namespace C2VM.TrafficLightsEnhancement.Systems.Serialization
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
             writer.Write(TLEDataVersion.Current);
-            Mod.m_Log.Info($"Saving {nameof(TLEDataMigrationSystem)} data version: {TLEDataVersion.Current}");
+            Mod.log.Info($"Saving {nameof(TLEDataMigrationSystem)} data version: {TLEDataVersion.Current}");
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out _version);
-            Mod.m_Log.Info($"Loaded {nameof(TLEDataMigrationSystem)} data version: {_version}");
+            Mod.log.Info($"Loaded {nameof(TLEDataMigrationSystem)} data version: {_version}");
         }
 
         public void SetDefaults(Context context)

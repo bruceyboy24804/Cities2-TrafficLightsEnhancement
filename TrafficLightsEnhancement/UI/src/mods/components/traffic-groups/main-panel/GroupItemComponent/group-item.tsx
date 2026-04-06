@@ -8,9 +8,10 @@ import Delete from "../../../common/icons/delete";
 import Tune from "../../../common/icons/tune";
 import Row from "../../../main-panel/items/row";
 import styles from "./group-item.module.scss";
+import { Tooltip } from "cs2/ui";
 
 
-const ActiveDot = () => <div className={styles.activeDot}>•</div>;
+const ActiveDot = () => <span className={styles.activeDot}>•</span>;
 
 export default function GroupItem(props: { 
 	data: MainPanelItemTrafficGroup;
@@ -46,13 +47,11 @@ export default function GroupItem(props: {
 	const displayName = data.name || "Unnamed Group";
 
 	return (
-		
+		<Tooltip tooltip={`${displayName} (${data.memberCount})`}>
 		<div onClick={clickHandler} style={{ cursor: "pointer" }} className={styles.hover}>
 			<Row style={{ padding: "0.25em" }} hoverEffect={true}>
-				<div className={data.isCurrentJunctionInGroup ? "" : styles.dim}>
-					<div className={styles.label}>
-						{displayName} ({data.memberCount}){data.isCurrentJunctionInGroup && <ActiveDot />}
-					</div>	
+				<div className={data.isCurrentJunctionInGroup ? styles.labelWrapper : `${styles.labelWrapper} ${styles.dim}`}>
+					{`${displayName} (${data.memberCount})`}{data.isCurrentJunctionInGroup && <ActiveDot />}
 				</div>
 				<div className={styles.iconBarContainer}>
 					<div className={styles.iconContainer} onClick={viewHandler}>
@@ -64,6 +63,7 @@ export default function GroupItem(props: {
 				</div>
 			</Row>
 		</div>
+		</Tooltip>
 	);
 }
 

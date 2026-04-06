@@ -1,12 +1,11 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
 
 import { bindValue, useValue } from "cs2/api";
 import mod from "mod.json";
 
-import { LocaleContext } from "../../context";
-import { getString } from "../../localisations";
+import { useLocalization } from "cs2/l10n";
 import { ToolTooltipMessage } from "mods/general";
 
 const Container = styled.div`
@@ -36,7 +35,7 @@ const Image = styled.img`
 `;
 
 export default function ToolTooltip() {
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
 
   const [top, setTop] = useState(0);
   const [left, setLeft] = useState(0);
@@ -55,9 +54,9 @@ export default function ToolTooltip() {
   const tooltip = useMemo(() => tooltipMessage.map(item => (
     <TooltipContainer key={item.image + item.message}>
       <Image src={item.image} />
-      {getString(locale, item.message)}
+      {translate(`UI.LABEL[C2VM.TrafficLightsEnhancement.${item.message}]`) ?? item.message}
     </TooltipContainer>
-  )), [locale, tooltipMessage]);
+  )), [translate, tooltipMessage]);
 
   return (
     <>

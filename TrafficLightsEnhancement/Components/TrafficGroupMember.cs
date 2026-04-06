@@ -13,11 +13,12 @@ public struct TrafficGroupMember : IComponentData, ISerializable
     public float m_DistanceToLeader;
     public int m_PhaseOffset;
     public int m_SignalDelay;
+    public float m_MemberCycleTimer;
     public bool m_IsGroupLeader;
 
     public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
     {
-        writer.Write(TLEDataVersion.V1);
+        writer.Write(TLEDataVersion.V2);
         writer.Write(m_GroupEntity);
         writer.Write(m_LeaderEntity);
         writer.Write(m_GroupIndex);
@@ -25,6 +26,7 @@ public struct TrafficGroupMember : IComponentData, ISerializable
         writer.Write(m_DistanceToLeader);
         writer.Write(m_PhaseOffset);
         writer.Write(m_SignalDelay);
+        writer.Write(m_MemberCycleTimer);
         writer.Write(m_IsGroupLeader);
     }
 
@@ -38,6 +40,14 @@ public struct TrafficGroupMember : IComponentData, ISerializable
         reader.Read(out m_DistanceToLeader);
         reader.Read(out m_PhaseOffset);
         reader.Read(out m_SignalDelay);
+        if (version >= TLEDataVersion.V2)
+        {
+            reader.Read(out m_MemberCycleTimer);
+        }
+        else
+        {
+            m_MemberCycleTimer = 0f;
+        }
         reader.Read(out m_IsGroupLeader);
     }
 
@@ -51,10 +61,11 @@ public struct TrafficGroupMember : IComponentData, ISerializable
         m_DistanceToLeader = 0f;
         m_PhaseOffset = 0;
         m_SignalDelay = 0;
+        m_MemberCycleTimer = 0f;
         m_IsGroupLeader = false;
     }
 
-    public TrafficGroupMember(Entity groupEntity, Entity leaderEntity, int groupIndex, float distanceToCenter = 0f, float distanceToLeader = 0f, int phaseOffset = 0, int signalDelay = 0, bool isGroupLeader = false)
+    public TrafficGroupMember(Entity groupEntity, Entity leaderEntity, int groupIndex, float distanceToCenter = 0f, float distanceToLeader = 0f, int phaseOffset = 0, int signalDelay = 0, float memberCycleTimer = 0f, bool isGroupLeader = false)
     {
         m_GroupEntity = groupEntity;
         m_LeaderEntity = leaderEntity;
@@ -63,6 +74,7 @@ public struct TrafficGroupMember : IComponentData, ISerializable
         m_DistanceToLeader = distanceToLeader;
         m_PhaseOffset = phaseOffset;
         m_SignalDelay = signalDelay;
+        m_MemberCycleTimer = memberCycleTimer;
         m_IsGroupLeader = isGroupLeader;
     }
 }

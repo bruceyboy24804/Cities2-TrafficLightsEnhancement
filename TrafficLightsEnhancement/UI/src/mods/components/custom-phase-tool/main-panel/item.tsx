@@ -1,10 +1,9 @@
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { callRemoveCustomPhase, callSetActiveCustomPhaseIndex } from "bindings";
 import { Icon } from "cs2/ui";
 
-import { LocaleContext } from "../../../context";
-import { getString } from "../../../localisations";
+import { useLocalization } from "cs2/l10n";
 
 import Check from "../../common/icons/check";
 import Delete from "../../common/icons/delete";
@@ -21,7 +20,7 @@ import classNames from "classnames";
 const ActiveDot = () => <div className={styles.activeDot}>•</div>;
 
 export default function Item(props: { data: MainPanelItemCustomPhase }) {
-	const locale = useContext(LocaleContext);
+	const { translate } = useLocalization();
 	const [isActiveLabel, setIsActiveLabel] = useState(false);
 	const [showEditor, setShowEditor] = useState(false);
 
@@ -63,7 +62,7 @@ export default function Item(props: { data: MainPanelItemCustomPhase }) {
 						<Icon src={gripVerticalSrc} tinted className={styles.dragIcon} />
 					</div>
 					<div className={styles.label}>
-						{getString(locale, "Phase") + " #" + (props.data.index + 1)}
+						{(translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Phase]") ?? "Phase") + " #" + (props.data.index + 1)}
 						{props.data.activeIndex < 0 &&
 							props.data.index + 1 === props.data.currentSignalGroup && <ActiveDot />}
 					</div>

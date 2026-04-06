@@ -1,20 +1,17 @@
-import { useContext } from "react";
-
-import { LocaleContext } from "../../../context";
-import { getString } from "../../../localisations";
+import { useLocalization } from "cs2/l10n";
 
 import TooltipContainer from "../../common/tooltip-container";
 import { CustomPhaseSignalState } from "mods/general";
 
 export default function TrafficSign(props: {state: CustomPhaseSignalState}) {
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
   let text = "";
   if (props.state == "go") {
-    text = getString(locale, "TrafficSignGo");
+    text = translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.TrafficSignGo]") ?? "Go";
   } else if (props.state == "yield") {
-    text = getString(locale, "TrafficSignYield");
+    text = translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.TrafficSignYield]") ?? "Yield";
   } else if (props.state == "stop") {
-    text = getString(locale, "TrafficSignStop");
+    text = translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.TrafficSignStop]") ?? "Stop";
   }
   return (
     <TooltipContainer>

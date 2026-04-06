@@ -1,8 +1,6 @@
-import { useContext } from 'react';
 import styled from 'styled-components';
 
-import { LocaleContext } from '../../../context';
-import { getString } from '../../../localisations';
+import { useLocalization } from 'cs2/l10n';
 import { engineCall } from '../../../engine';
 import { MainPanelItemNotification } from 'mods/general';
 
@@ -34,7 +32,7 @@ const Label = styled.div`
 `;
 
 export default function Notification(props: { data: MainPanelItemNotification }) {
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
   const clickHandler = () => {
     if (props.data.engineEventName && props.data.engineEventName.length > 0) {
       engineCall(props.data.engineEventName, JSON.stringify(props.data));
@@ -45,12 +43,12 @@ export default function Notification(props: { data: MainPanelItemNotification })
       {props.data.notificationType == "warning" &&
       <Warning onClick={clickHandler}>
         <Image src="Media/Game/Icons/AdvisorNotifications.svg" />
-        <Label>{getString(locale, props.data.label)}</Label>
+        <Label>{translate(`UI.LABEL[C2VM.TrafficLightsEnhancement.${props.data.label}]`) ?? props.data.label}</Label>
       </Warning>}
       {props.data.notificationType == "notice" &&
       <Notice onClick={clickHandler}>
         <Image src="Media/Game/Icons/AdvisorNotifications.svg" />
-        <Label>{getString(locale, props.data.label)}</Label>
+        <Label>{translate(`UI.LABEL[C2VM.TrafficLightsEnhancement.${props.data.label}]`) ?? props.data.label}</Label>
       </Notice>}
     </>
   );

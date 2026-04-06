@@ -23,6 +23,7 @@ type RowProps = {
   style?: CSSProperties;
   disableEngineCall?: boolean;
   className?: string;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
 };
 
 export default function Row(props: RowProps) {
@@ -43,7 +44,7 @@ export default function Row(props: RowProps) {
     }
   };
 
-  const handleClick = props.disableEngineCall ? undefined : clickHandler;
+  const handleClick = props.onClick ?? (props.disableEngineCall ? undefined : clickHandler);
   const handlePointerDownCapture = props.disableEngineCall
     ? (event: React.PointerEvent) => {
         console.log("[Row] pointer down capture", {

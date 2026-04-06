@@ -1,15 +1,12 @@
-import { useContext } from "react";
-
-import { LocaleContext } from "../../../context";
-import { getString } from "../../../localisations";
+import { useLocalization } from "cs2/l10n";
 
 import TooltipContainer from "../../common/tooltip-container";
 
 export default function Options() {
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
   return (
     <TooltipContainer>
-      {getString(locale, "test")}
+      {translate("UI.LABEL[C2VM.TrafficLightsEnhancement.test]") ?? "test"}
     </TooltipContainer>
   );
 }

@@ -66,27 +66,27 @@ public partial class ToolSystem : NetToolSystem
 
         m_ConfigureTooltip = new StringTooltip
         {
-            path = "C2VM.TLE.Tooltips.Configure",
+            path = "Tooltip.LABEL[C2VM.TrafficLightsEnhancement.Configure]",
             icon = "Media/Mouse/LMB.svg",
-            value = LocalizedString.Id("C2VM.TLE.Tooltips.Configure"),
+            value = LocalizedString.Id("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.Configure]"),
         };
         m_RemoveConfigurationTooltip = new StringTooltip
         {
-            path = "C2VM.TLE.Tooltips.RemoveTLEConfiguration",
+            path = "Tooltip.LABEL[C2VM.TrafficLightsEnhancement.RemoveTLEConfiguration]",
             icon = "Media/Mouse/RMB.svg",
-            value = LocalizedString.Id("C2VM.TLE.Tooltips.RemoveTLEConfiguration"),
+            value = LocalizedString.Id("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.RemoveTLEConfiguration]"),
         };
         m_RemoveTrafficLightsTooltip = new StringTooltip
         {
-            path = "C2VM.TLE.Tooltips.RemoveTrafficLights",
+            path = "Tooltip.LABEL[C2VM.TrafficLightsEnhancement.RemoveTrafficLights]",
             icon = "Media/Mouse/RMB.svg",
-            value = LocalizedString.Id("C2VM.TLE.Tooltips.RemoveTrafficLights"),
+            value = LocalizedString.Id("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.RemoveTrafficLights]"),
         };
         m_SelectGroupMemberTooltip = new StringTooltip
         {
-            path = "C2VM.TLE.Tooltips.SelectGroupMember",
+            path = "Tooltip.LABEL[C2VM.TrafficLightsEnhancement.SelectGroupMember]",
             icon = "Media/Mouse/LMB.svg",
-            value = LocalizedString.Id("C2VM.TLE.Tooltips.SelectGroupMember"),
+            value = LocalizedString.Id("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.SelectGroupMember]"),
         };
     }
 
@@ -199,7 +199,7 @@ public partial class ToolSystem : NetToolSystem
 
     protected override void OnGameLoadingComplete(Colossal.Serialization.Entities.Purpose purpose, Game.GameMode mode)
     {
-        Mod.m_Log.Info($"Searching for traffic light prefab asset entities");
+        Mod.log.Info($"Searching for traffic light prefab asset entities");
         m_PrefabEntity = Entity.Null;
         EntityQuery query = GetEntityQuery(ComponentType.ReadOnly<PlaceableNetData>());
         NativeArray<Entity> entityArray = query.ToEntityArray(Allocator.Temp);
@@ -213,7 +213,7 @@ public partial class ToolSystem : NetToolSystem
             if (m_PrefabSystem.TryGetPrefab(entityArray[i], out PrefabBase prefabBase) && prefabBase is NetPrefab)
             {
                 m_PrefabEntity = entityArray[i];
-                Mod.m_Log.Info($"{m_PrefabEntity} prefabBase.uiTag: {prefabBase.uiTag}");
+                Mod.log.Info($"{m_PrefabEntity} prefabBase.uiTag: {prefabBase.uiTag}");
             }
         }
         Mod.Assert(m_PrefabEntity != Entity.Null, "Traffic lights prefab asset entity not found. The tool system will not work.");
@@ -326,9 +326,9 @@ public partial class ToolSystem : NetToolSystem
         if (m_ToolSystem.activeTool == this)
         {
             m_ToolSystem.activeTool = m_DefaultToolSystem;
-            m_TooltipSystem.m_TooltipList.Clear();
-            m_TooltipSystem.Enabled = false;
         }
+        m_TooltipSystem.m_TooltipList.Clear();
+        m_TooltipSystem.Enabled = false;
     }
 
     private void ToolChanged(ToolBaseSystem system)

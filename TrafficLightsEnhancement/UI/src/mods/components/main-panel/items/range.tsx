@@ -1,9 +1,8 @@
-import { ChangeEvent, KeyboardEvent, useContext, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import { Tooltip } from "cs2/ui"
 import { ValueBinding, trigger } from "cs2/api";
-import { LocaleContext } from '../../../context';
+import { useLocalization } from 'cs2/l10n';
 import { engineCall } from '../../../engine';
-import { getString } from '../../../localisations';
 import { MainPanelItemRange } from 'mods/general';
 import mod from 'mod.json'
 import Input from '../../common/input';
@@ -87,7 +86,7 @@ export default function MainPanelRange(props: MainPanelRangeProps) {
     engineEventName: props.engineEventName,
     key: props.keyName,
   };
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
   const [value, setValue] = useState(0);
   const [textFieldActive, setTextFieldActive] = useState(false);
   const [textFieldValue, setTextFieldValue] = useState("");
@@ -163,7 +162,7 @@ export default function MainPanelRange(props: MainPanelRangeProps) {
   }, [config.value]);
 
   const titleContent = (
-    <TitleDim itemType="title" title={config.label} secondaryText={!textFieldActive ? getString(locale, config.valuePrefix) + `${Math.round(value * 100) / 100}` + getString(locale, config.valueSuffix) : ""} />
+    <TitleDim itemType="title" title={config.label} secondaryText={!textFieldActive ? (translate(`UI.LABEL[C2VM.TrafficLightsEnhancement.${config.valuePrefix}]`) ?? config.valuePrefix) + `${Math.round(value * 100) / 100}` + (translate(`UI.LABEL[C2VM.TrafficLightsEnhancement.${config.valueSuffix}]`) ?? config.valueSuffix) : ""} />
   );
 
   

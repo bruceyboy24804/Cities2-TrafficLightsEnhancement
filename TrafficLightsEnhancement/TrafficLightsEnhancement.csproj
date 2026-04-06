@@ -7,8 +7,8 @@
 
         <AssemblyName>C2VM.TrafficLightsEnhancement</AssemblyName>
         <RootNamespace>C2VM.TrafficLightsEnhancement</RootNamespace>
-        <Version>0.3.3.5</Version>
-        <InformationalVersion>0.3.3.5</InformationalVersion>
+        <Version>1.0.0.0</Version>
+        <InformationalVersion>1.0.0.0</InformationalVersion>
         <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
         <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
     </PropertyGroup>
@@ -97,7 +97,15 @@
         <None Include="$(ModPropsFile)" Link="Properties\Mod.props" />
         <None Include="$(ModTargetsFile)" Link="Properties\Mod.targets" />
     </ItemGroup>
-
+    <ItemGroup>
+        <EmbeddedResource Include="Locale.json" />
+        <EmbeddedResource Include="Locale\*.json" />
+        <None Remove="Locale.json" />
+        <None Remove="Locale\*.json" />
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Locale\" />
+    </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="Resources\**\*" />
     </ItemGroup>

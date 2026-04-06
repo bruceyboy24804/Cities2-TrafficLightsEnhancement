@@ -1,16 +1,13 @@
-import { useContext } from "react";
-
-import { LocaleContext } from "../../../context";
-import { getString } from "../../../localisations";
+import { useLocalization } from "cs2/l10n";
 
 import TooltipContainer from "../../common/tooltip-container";
 
 export default function LinkPhase(props: {link: boolean}) {
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
   return (
     <TooltipContainer>
-      {props.link && getString(locale, "LinkPhase")}
-      {!props.link && getString(locale, "UnlinkPhase")}
+      {props.link && (translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.LinkPhase]") ?? "Link Phase")}
+      {!props.link && (translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.UnlinkPhase]") ?? "Unlink Phase")}
     </TooltipContainer>
   );
 }

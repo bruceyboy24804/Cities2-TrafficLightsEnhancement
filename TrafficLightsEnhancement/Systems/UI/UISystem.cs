@@ -186,20 +186,16 @@ public partial class UISystem: ExtendedUISystemBase
 
     public static string GetLocaleCode()
     {
-        string locale = Utils.LocalisationUtils.GetAutoLocale(GameManager.instance.localizationManager.activeLocaleId, CultureInfo.CurrentCulture.Name);
-        if (Mod.m_Settings != null && Mod.m_Settings.m_Locale != "auto")
+        string locale = LocaleHelper.GetLocale(GameManager.instance.localizationManager.activeLocaleId, CultureInfo.CurrentCulture.Name);
+        if (Mod.m_Setting != null && Mod.m_Setting.m_Locale != "auto")
         {
-            locale = Mod.m_Settings.m_Locale;
+            locale = Mod.m_Setting.m_Locale;
         }
         return locale;
     }
 
     public static void UpdateLocale()
     {
-        LocalisationUtils localisationsHelper = new LocalisationUtils(GetLocaleCode());
-        localisationsHelper.AddToDictionary(GameManager.instance.localizationManager.activeDictionary);
-        localisationsHelper.UpdateActiveDictionary();
-
         if (m_LocaleBinding != null)
         {
             m_LocaleBinding.Update();

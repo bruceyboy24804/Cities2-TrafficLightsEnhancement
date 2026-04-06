@@ -1,8 +1,6 @@
-import { useContext } from 'react';
 import styled from 'styled-components';
 
-import { LocaleContext } from '../../../context';
-import { getString } from '../../../localisations';
+import { useLocalization } from 'cs2/l10n';
 import { MainPanelItemMessage } from 'mods/general';
 
 const Container = styled.div`
@@ -12,10 +10,10 @@ const Container = styled.div`
 `;
 
 export default function Message(props: MainPanelItemMessage) {
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
   return (
     <Container>
-      {getString(locale, props.message)}
+      {translate(`UI.LABEL[C2VM.TrafficLightsEnhancement.${props.message}]`) ?? props.message}
     </Container>
   );
 }

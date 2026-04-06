@@ -1,8 +1,6 @@
-import { useContext } from 'react';
 import styled from 'styled-components';
 
-import { LocaleContext } from '../../../context';
-import { getString } from '../../../localisations';
+import { useLocalization } from 'cs2/l10n';
 import { MainPanelItemTitle } from 'mods/general';
 
 const Container = styled.div`
@@ -27,11 +25,11 @@ const SecondaryText = styled.div`
 `;
 
 export default function TitleDim(props: MainPanelItemTitle) {
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
   return (
     <Container>
-      <TitleText>{getString(locale, props.title)}</TitleText>
-      {props.secondaryText && <SecondaryText>{getString(locale, props.secondaryText)}</SecondaryText>}
+      <TitleText>{translate(`UI.LABEL[C2VM.TrafficLightsEnhancement.${props.title}]`) ?? props.title}</TitleText>
+      {props.secondaryText && <SecondaryText>{translate(`UI.LABEL[C2VM.TrafficLightsEnhancement.${props.secondaryText}]`) ?? props.secondaryText}</SecondaryText>}
     </Container>
   );
 }

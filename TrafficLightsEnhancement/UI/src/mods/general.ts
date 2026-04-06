@@ -1,5 +1,29 @@
 import { Entity } from "cs2/utils";
 
+export interface MainPanelOption {
+  label: string,
+  isChecked: boolean,
+  key: string
+}
+
+export interface MainPanelMainData {
+  isGroupMember: boolean,
+  selectedPattern: number,
+  availablePatterns: Array<{ name: string, value: number }>,
+  options: MainPanelOption[],
+  showOptions: boolean,
+  showPedestrianDuration: boolean,
+  pedestrianDurationMultiplier: number,
+  hasLaneDirectionTool: boolean,
+  hasUnsavedChanges: boolean,
+  isCustomPhaseMode: boolean
+}
+
+export interface MainPanelEmptyData {
+  isAddingMember: boolean,
+  targetGroupName: string
+}
+
 export interface MainPanel {
   title: string,
   image: string,
@@ -8,7 +32,11 @@ export interface MainPanel {
   showFloatingButton: boolean,
   state: number,
   selectedEntity: { index: number, version: number },
-  items: MainPanelItem[]
+  mainData?: MainPanelMainData | null,
+  emptyData?: MainPanelEmptyData | null,
+  customPhaseHeader?: MainPanelItemCustomPhaseHeader | null,
+  phases?: MainPanelItemCustomPhase[] | null,
+  groups?: MainPanelItemTrafficGroup[] | null
 }
 
 export type MainPanelItem = MainPanelItemTitle | MainPanelItemMessage | MainPanelItemDivider | MainPanelItemRadio | MainPanelItemCheckbox | MainPanelItemButton | MainPanelItemNotification | MainPanelItemRange | MainPanelItemCustomPhaseHeader | MainPanelItemCustomPhase | MainPanelItemTrafficGroup;
@@ -80,7 +108,7 @@ export interface MainPanelItemRange {
   defaultValue: number,
   enableTextField?: boolean,
   textFieldRegExp?: string,
-  engineEventName: string,
+  engineEventName?: string,
   tooltip?: string,
 }
 

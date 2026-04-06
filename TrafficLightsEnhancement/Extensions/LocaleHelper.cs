@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using C2VM.TrafficLightsEnhancement;
 using Colossal;
@@ -11,6 +12,18 @@ namespace C2VM.TrafficLightsEnhancement.Extensions
     public class LocaleHelper
 	{
 		private readonly Dictionary<string, Dictionary<string, string>> _locale;
+
+		private static readonly string[] _supportedLocales =
+		[
+			"de-DE", "en-US", "es-ES", "fr-FR", "it-IT", "ja-JP", "ko-KR",
+			"nl-NL", "pl-PL", "pt-BR", "ru-RU", "zh-HANS", "zh-HANT", "zh-HK", "zh-TW"
+		];
+
+		private static readonly Dictionary<string, string[]> _supportedCultures = new()
+		{
+			{ "en-US", ["nl-NL"] },
+			{ "zh-HANT", ["zh-HK", "zh-TW"] }
+		};
 
 		public LocaleHelper(string dictionaryResourceName)
 		{
@@ -61,6 +74,15 @@ namespace C2VM.TrafficLightsEnhancement.Extensions
 		internal static string? GetTooltip(string key)
 		{
 			return Translate($"Tooltip.LABEL[{Mod.modName}.{key}]");
+		}
+
+		public static string GetLocale(string gameLocale, string cultureLocale)
+		{
+			if (_supportedCultures.TryGetValue(gameLocale, out var cultures) && cultures.Contains(cultureLocale))
+				return cultureLocale;
+			if (_supportedLocales.Contains(gameLocale))
+				return gameLocale;
+			return "en-US";
 		}
 
 		public IEnumerable<DictionarySource> GetAvailableLanguages()

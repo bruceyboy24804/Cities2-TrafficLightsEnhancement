@@ -1,8 +1,6 @@
-import { useContext } from 'react';
+import { useLocalization } from 'cs2/l10n';
 import { Tooltip } from "cs2/ui"
 import { trigger } from "cs2/api";
-import { LocaleContext } from '../../../context';
-import { getString } from '../../../localisations';
 import mod from 'mod.json'
 import styles from './itemsStyling.module.scss';
 import Checkbox from '../../common/checkbox';
@@ -19,7 +17,7 @@ export interface MainPanelCheckboxProps {
 }
 
 export default function MainPanelCheckbox(props: MainPanelCheckboxProps) {
-  const locale = useContext(LocaleContext);
+  const { translate } = useLocalization();
   const triggerGroup = props.triggerGroup ?? mod.id;
   const triggerName = `TRIGGER:${props.triggerName}`;
 
@@ -36,7 +34,7 @@ export default function MainPanelCheckbox(props: MainPanelCheckboxProps) {
       <div className={styles.container} onClick={clickHandler}>
         <div className={styles.titleContainer}>
           <Checkbox isChecked={props.isChecked} />
-          <div className={styles.label}>{getString(locale, props.label)}</div>
+          <div className={styles.label}>{translate(`UI.LABEL[C2VM.TrafficLightsEnhancement.${props.label}]`) ?? props.label}</div>
         </div>
       </div>
     </div>

@@ -1,11 +1,10 @@
-import {useContext, useState} from "react";
+import {useState} from "react";
 
-import {callHighlightEdge, callSetMainPanelState, callUpdateCustomPhaseData, callApplyPhaseTemplate} from "bindings";
+import {callHighlightEdge, setPanelState, callUpdateCustomPhaseData, callApplyPhaseTemplate} from "bindings";
 
 import {PanelFoldout} from "cs2/ui";
 
-import {LocaleContext} from "../../../context";
-import {getString} from "../../../localisations";
+import {useLocalization} from "cs2/l10n";
 
 import Button from "../../common/button";
 import Divider from "../../main-panel/items/divider";
@@ -65,9 +64,9 @@ const EndPhaseButton = (props: { index: number, disabled?: boolean }) => {
 };
 
 export function TrafficLightModeSelector(props: { trafficLightMode: number }) {
-    const locale = useContext(LocaleContext);
+    const { translate } = useLocalization();
     return (
-        <PanelFoldout header={<div className={styles.foldoutHeader}>{getString(locale, "TrafficLightMode")}</div>}
+        <PanelFoldout header={<div className={styles.foldoutHeader}>{translate("UI.LABEL[C2VM.TrafficLightsEnhancement.TrafficLightMode]") ?? "Traffic Light Mode"}</div>}
                       initialExpanded={true}>
                         <MainPanelRadio
                         keyName="TrafficLightMode"
@@ -173,14 +172,11 @@ export default function SubPanel(props: {
     statisticsOnly?: boolean;
     isCoordinatedFollower?: boolean;
 }) {
-    const locale = useContext(LocaleContext);
+    const { translate } = useLocalization();
     const data = props.data;
     const [highlightedEdge, setHighlightedEdge] = useState<{ index: number, version: number } | null>(null);
     const handleBackToGroups = () => {
-        callSetMainPanelState(JSON.stringify({
-            key: "state",
-            value: String(MainPanelState.TrafficGroups)
-        }));
+        setPanelState(MainPanelState.TrafficGroups);
     };
 
     const handleEdgeHighlight = (edgeIndex: number, edgeVersion: number) => {
@@ -231,7 +227,7 @@ export default function SubPanel(props: {
             {!props.statisticsOnly && !props.isCoordinatedFollower && (
                 <>
                     <PanelFoldout
-                        header={<div className={styles.foldoutHeader}>{getString(locale, "TrafficLightMode")}</div>}
+                        header={<div className={styles.foldoutHeader}>{translate("UI.LABEL[C2VM.TrafficLightsEnhancement.TrafficLightMode]") ?? "Traffic Light Mode"}</div>}
                         initialExpanded={true}>
                         <MainPanelRadio
                             keyName="TrafficLightMode"
@@ -239,25 +235,25 @@ export default function SubPanel(props: {
                             isChecked={data.trafficLightMode === 0}
                             label="Dynamic"
                             triggerName="CallUpdateCustomPhaseData"
-                            tooltip="Dynamic phase mode that adjusts timing based on traffic conditions."
+                            tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.Dynamic]") ?? "Dynamic phase mode that adjusts timing based on traffic conditions."}
                             className={styles.hover}
                         />
                         <MainPanelRadio
                             keyName="TrafficLightMode"
                             value="1"
                             isChecked={data.trafficLightMode === 1}
-                            label="Fixed Timed"
+                            label="FixedTimed"
                             triggerName="CallUpdateCustomPhaseData"
-                            tooltip="Fixed timing mode with preset phase durations."
+                            tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.FixedTimed]") ?? "Fixed timing mode with preset phase durations."}
                             className={styles.hover}
                         />
                         {data.trafficLightMode === 1 && (
                             <MainPanelCheckbox
                                 keyName="SmartPhaseSelection"
                                 isChecked={data.smartPhaseSelection}
-                                label="Smart Phase Selection"
+                                label="SmartPhaseSelection"
                                 triggerName="CallUpdateCustomPhaseData"
-                                tooltip="Enable intelligent phase selection based on traffic conditions. Disable for simple sequential phases (1→2→3→4→1...)."
+                                tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.SmartPhaseSelection]") ?? "Enable intelligent phase selection based on traffic conditions. Disable for simple sequential phases (1→2→3→4→1...)."}
                                 className={styles.hover}
                             />
                         )}
@@ -265,7 +261,7 @@ export default function SubPanel(props: {
 
                     <Divider/>
                     <PanelFoldout
-                        header={<div className={styles.foldoutHeader}>Timing Template</div>}
+                        header={<div className={styles.foldoutHeader}>{translate("UI.LABEL[C2VM.TrafficLightsEnhancement.TimingTemplate]") ?? "Timing Template"}</div>}
                         initialExpanded={false}>
                         <PresetManager
                             builtInTemplates={PHASE_TEMPLATES}
@@ -277,7 +273,7 @@ export default function SubPanel(props: {
 
                     <Divider/>
                     <PanelFoldout
-                        header={<div className={styles.foldoutHeader}>{getString(locale, "PhaseChangeMode")}</div>}
+                        header={<div className={styles.foldoutHeader}>{translate("UI.LABEL[C2VM.TrafficLightsEnhancement.PhaseChangeMode]") ?? "Phase Change Mode"}</div>}
                         initialExpanded={false}>
                         <MainPanelRadio
                             keyName="ChangeMetric"
@@ -285,49 +281,49 @@ export default function SubPanel(props: {
                             isChecked={data.changeMetric === 0}
                             label="Auto"
                             triggerName="CallUpdateCustomPhaseData"
-                            tooltip="Automatically balances traffic flow and waiting time to decide when to change phase."
+                            tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.Auto]") ?? "Automatically balances traffic flow and waiting time to decide when to change phase."}
                             className={styles.hover}
                         />
                         <MainPanelRadio
                             keyName="ChangeMetric"
                             value="1"
                             isChecked={data.changeMetric === 1}
-                            label="On Flow Drop"
+                            label="OnFlowDrop"
                             triggerName="CallUpdateCustomPhaseData"
-                            tooltip="Changes phase when traffic flow decreases. Keeps traffic moving smoothly."
+                            tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.OnFlowDrop]") ?? "Changes phase when traffic flow decreases. Keeps traffic moving smoothly."}
                             className={styles.hover}
                         />
                         <MainPanelRadio
                             keyName="ChangeMetric"
                             value="2"
                             isChecked={data.changeMetric === 2}
-                            label="On Wait Increase"
+                            label="OnWaitIncrease"
                             triggerName="CallUpdateCustomPhaseData"
-                            tooltip="Changes phase when waiting traffic increases. Reduces wait times."
+                            tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.OnWaitIncrease]") ?? "Changes phase when waiting traffic increases. Reduces wait times."}
                             className={styles.hover}
                         />
                         <MainPanelRadio
                             keyName="ChangeMetric"
                             value="3"
                             isChecked={data.changeMetric === 3}
-                            label="When Empty"
+                            label="WhenEmpty"
                             triggerName="CallUpdateCustomPhaseData"
-                            tooltip="Changes phase only when current lanes are empty. Maximizes throughput per phase."
+                            tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.WhenEmpty]") ?? "Changes phase only when current lanes are empty. Maximizes throughput per phase."}
                             className={styles.hover}
                         />
                         <MainPanelRadio
                             keyName="ChangeMetric"
                             value="4"
                             isChecked={data.changeMetric === 4}
-                            label="When No Demand"
+                            label="WhenNoDemand"
                             triggerName="CallUpdateCustomPhaseData"
-                            tooltip="Changes phase only when other lanes have waiting traffic. Avoids unnecessary changes."
+                            tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.WhenNoDemand]") ?? "Changes phase only when other lanes have waiting traffic. Avoids unnecessary changes."}
                             className={styles.hover}
                         />
                         <MainPanelRange className={styles.hover} data={{
                             itemType: "range",
                             key: "WaitFlowBalance",
-                            label: "Wait Sensitivity",
+                            label: "WaitSensitivity",
                             value: data.waitFlowBalance,
                             valuePrefix: "",
                             valueSuffix: "",
@@ -338,7 +334,7 @@ export default function SubPanel(props: {
                             enableTextField: true,
                             textFieldRegExp: "^\\d{0,4}(\\.\\d{0,2})?$",
                             engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallUpdateCustomPhaseData",
-                            tooltip: "How much to prioritize waiting traffic. Higher = change phases sooner when cars are waiting."
+                            tooltip: translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.WaitSensitivity]") ?? "How much to prioritize waiting traffic. Higher = change phases sooner when cars are waiting."
                         }}/>
                     </PanelFoldout>
                 </>
@@ -347,12 +343,12 @@ export default function SubPanel(props: {
             {!props.statisticsOnly && !props.isCoordinatedFollower &&
                 <>
                     <Divider/>
-                    <PanelFoldout header={<div className={styles.foldoutHeader}>Adjustments</div>}
+                    <PanelFoldout header={<div className={styles.foldoutHeader}>{translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Adjustments]") ?? "Adjustments"}</div>}
                                   initialExpanded={false}>
                         <MainPanelRange className={styles.hover} data={{
                             itemType: "range",
                             key: "MinimumDuration",
-                            label: "Minimum Duration",
+                            label: "MinimumDuration",
                             value: data.minimumDuration,
                             valuePrefix: "",
                             valueSuffix: "s",
@@ -363,12 +359,12 @@ export default function SubPanel(props: {
                             enableTextField: true,
                             textFieldRegExp: "^\\d{0,4}$",
                             engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallUpdateCustomPhaseData",
-                            tooltip: "Sets the minimum time a traffic light phase must stay active before it can change, regardless of traffic conditions. "
+                            tooltip: translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.MinimumDuration]") ?? "Sets the minimum time a traffic light phase must stay active before it can change."
                         }}/>
                         <MainPanelRange className={styles.hover} data={{
                             itemType: "range",
                             key: "MaximumDuration",
-                            label: "Maximum Duration",
+                            label: "MaximumDuration",
                             value: data.maximumDuration,
                             valuePrefix: "",
                             valueSuffix: "s",
@@ -379,13 +375,13 @@ export default function SubPanel(props: {
                             enableTextField: true,
                             textFieldRegExp: "^\\d{0,4}$",
                             engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallUpdateCustomPhaseData",
-                            tooltip: "Sets the maximum time a traffic light phase can remain active. This prevents a phase from staying green too long when there's no traffic waiting."
+                            tooltip: translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.MaximumDuration]") ?? "Sets the maximum time a traffic light phase can remain active."
                         }}/>
                         {data.trafficLightMode === 0 && <>
                             <MainPanelRange className={styles.hover} data={{
                                 itemType: "range",
                                 key: "TargetDurationMultiplier",
-                                label: "Target Duration",
+                                label: "TargetDuration",
                                 value: data.targetDurationMultiplier,
                                 valuePrefix: "",
                                 valueSuffix: "CustomPedestrianDurationMultiplierSuffix",
@@ -396,12 +392,12 @@ export default function SubPanel(props: {
                                 enableTextField: true,
                                 textFieldRegExp: "^\\d{0,4}(\\.\\d{0,2})?$",
                                 engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallUpdateCustomPhaseData",
-                                tooltip: "Scales the calculated target duration for each phase. The target duration is calculated as: 10f * (AverageCarFlow + TrackLaneOccupied * 0.5) * TargetDurationMultiplier. Higher values make phases last longer."
+                                tooltip: translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.TargetDuration]") ?? "Scales the calculated target duration for each phase. Higher values make phases last longer."
                             }}/>
                             <MainPanelRange className={styles.hover} data={{
                                 itemType: "range",
                                 key: "IntervalExponent",
-                                label: "Interval Exponent",
+                                label: "IntervalExponent",
                                 value: data.intervalExponent,
                                 valuePrefix: "",
                                 valueSuffix: "",
@@ -412,19 +408,19 @@ export default function SubPanel(props: {
                                 enableTextField: true,
                                 textFieldRegExp: "^\\d{0,4}(\\.\\d{0,2})?$",
                                 engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallUpdateCustomPhaseData",
-                                tooltip: "Controls how aggressively the system prioritizes phases that haven't run recently. Used in the weighted waiting formula as an exponent - higher values make phases that haven't run for a long time get much higher priority, ensuring fair rotation."
+                                tooltip: translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.IntervalExponent]") ?? "Controls how aggressively the system prioritizes phases that haven't run recently."
                             }}/>
                         </>}
                     </PanelFoldout>
                     {data.trafficLightMode === 0 && <>
                         <Divider/>
                         <PanelFoldout
-                            header={<div className={styles.foldoutHeader}>{getString(locale, "VehicleWeights")}</div>}
+                            header={<div className={styles.foldoutHeader}>{translate("UI.LABEL[C2VM.TrafficLightsEnhancement.VehicleWeights]") ?? "Vehicle Weights"}</div>}
                             initialExpanded={false}>
                             <MainPanelRange
                                 className={styles.hover}
                                 keyName="CarWeight"
-                                label="Car Weight"
+                                label="CarWeight"
                                 value={data.carWeight}
                                 valueSuffix="x"
                                 min={0.1}
@@ -434,12 +430,12 @@ export default function SubPanel(props: {
                                 enableTextField
                                 textFieldRegExp="^\d{0,2}(\.\d{0,1})?$"
                                 triggerName="CallUpdateCustomPhaseData"
-                                tooltip="Weight multiplier for car lanes when calculating phase priority. Higher values give more priority to phases with waiting cars."
+                                tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.CarWeight]") ?? "Weight multiplier for car lanes when calculating phase priority."}
                             />
                             <MainPanelRange
                                 className={styles.hover}
                                 keyName="PublicCarWeight"
-                                label="Bus Weight"
+                                label="BusWeight"
                                 value={data.publicCarWeight}
                                 valueSuffix="x"
                                 min={0.1}
@@ -449,12 +445,12 @@ export default function SubPanel(props: {
                                 enableTextField
                                 textFieldRegExp="^\d{0,2}(\.\d{0,1})?$"
                                 triggerName="CallUpdateCustomPhaseData"
-                                tooltip="Weight multiplier for public transport (bus) lanes. Higher values prioritize buses over regular traffic."
+                                tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.BusWeight]") ?? "Weight multiplier for public transport (bus) lanes."}
                             />
                             <MainPanelRange
                                 className={styles.hover}
                                 keyName="TrackWeight"
-                                label="Track Weight"
+                                label="TrackWeight"
                                 value={data.trackWeight}
                                 valueSuffix="x"
                                 min={0.1}
@@ -464,12 +460,12 @@ export default function SubPanel(props: {
                                 enableTextField
                                 textFieldRegExp="^\d{0,2}(\.\d{0,1})?$"
                                 triggerName="CallUpdateCustomPhaseData"
-                                tooltip="Weight multiplier for tram/train tracks. Higher values give highest priority to rail vehicles."
+                                tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.TrackWeight]") ?? "Weight multiplier for tram/train tracks."}
                             />
                             <MainPanelRange
                                 className={styles.hover}
                                 keyName="PedestrianWeight"
-                                label="Pedestrian Weight"
+                                label="PedestrianWeight"
                                 value={data.pedestrianWeight}
                                 valueSuffix="x"
                                 min={0.1}
@@ -479,12 +475,12 @@ export default function SubPanel(props: {
                                 enableTextField
                                 textFieldRegExp="^\d{0,2}(\.\d{0,1})?$"
                                 triggerName="CallUpdateCustomPhaseData"
-                                tooltip="Weight multiplier for pedestrian crossings."
+                                tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.PedestrianWeight]") ?? "Weight multiplier for pedestrian crossings."}
                             />
                             <MainPanelRange
                                 className={styles.hover}
                                 keyName="SmoothingFactor"
-                                label="Smoothing Factor"
+                                label="SmoothingFactor"
                                 value={data.smoothingFactor}
                                 min={0}
                                 max={1}
@@ -493,38 +489,38 @@ export default function SubPanel(props: {
                                 enableTextField
                                 textFieldRegExp="^(0(\.\d{0,1})?|1(\.0)?)$"
                                 triggerName="CallUpdateCustomPhaseData"
-                                tooltip="How much to blend current calculations with previous values. 0 = no smoothing (instant changes), 1 = full smoothing (very gradual changes)."
+                                tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.SmoothingFactor]") ?? "How much to blend current calculations with previous values. 0 = no smoothing (instant changes), 1 = full smoothing (very gradual changes)."}
                             />
                         </PanelFoldout>
                     </>}
                     <Divider/>
                 </>}
 
-            <PanelFoldout header={<div className={styles.foldoutHeader}>Statistics</div>} initialExpanded={true}>
+            <PanelFoldout header={<div className={styles.foldoutHeader}>{translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Statistics]") ?? "Statistics"}</div>} initialExpanded={true}>
                 <ItemTitle title="Timer"
                            secondaryText={`${data.timer} / ${Math.round(Math.min(Math.max(data.targetDuration, data.minimumDuration), data.maximumDuration))}`}
                            dim={true}/>
                 <ItemTitle title="Priority" secondaryText={`${data.priority}`} dim={true}/>
-                <ItemTitle title="Turns Since Last Run" secondaryText={`${data.turnsSinceLastRun}`} dim={true}/>
+                <ItemTitle title="TurnsSinceLastRun" secondaryText={`${data.turnsSinceLastRun}`} dim={true}/>
                 <Divider/>
                 <ItemTitle title="Flow" secondaryText={`${Round(data.carFlow)}`} dim={true}
-                           tooltip="Average car flow through this phase"/>
-                <ItemTitle title="Flow Ratio" secondaryText={`${Round(data.flowRatio)}`} dim={true}
-                           tooltip="Smoothed flow ratio for phase decisions"/>
-                <ItemTitle title="Wait Ratio" secondaryText={`${Round(data.waitRatio)}`} dim={true}
-                           tooltip="Smoothed wait ratio for phase decisions"/>
-                <ItemTitle title="Weighted Waiting" secondaryText={`${Round(data.weightedWaiting)}`} dim={true}
-                           tooltip="Combined waiting metric used for phase priority"/>
+                           tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.Flow]") ?? "Average car flow through this phase"}/>
+                <ItemTitle title="FlowRatio" secondaryText={`${Round(data.flowRatio)}`} dim={true}
+                           tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.FlowRatio]") ?? "Smoothed flow ratio for phase decisions"}/>
+                <ItemTitle title="WaitRatio" secondaryText={`${Round(data.waitRatio)}`} dim={true}
+                           tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.WaitRatio]") ?? "Smoothed wait ratio for phase decisions"}/>
+                <ItemTitle title="WeightedWaiting" secondaryText={`${Round(data.weightedWaiting)}`} dim={true}
+                           tooltip={translate("Tooltip.LABEL[C2VM.TrafficLightsEnhancement.WeightedWaiting]") ?? "Combined waiting metric used for phase priority"}/>
                 <Divider/>
-                <ItemTitle title="Cars Waiting" secondaryText={`${data.carLaneOccupied}`} dim={true}/>
-                <ItemTitle title="Buses Waiting" secondaryText={`${data.publicCarLaneOccupied}`} dim={true}/>
-                <ItemTitle title="Trams Waiting" secondaryText={`${data.trackLaneOccupied}`} dim={true}/>
-                <ItemTitle title="Pedestrians Waiting" secondaryText={`${data.pedestrianLaneOccupied}`} dim={true}/>
+                <ItemTitle title="CarsWaiting" secondaryText={`${data.carLaneOccupied}`} dim={true}/>
+                <ItemTitle title="BusesWaiting" secondaryText={`${data.publicCarLaneOccupied}`} dim={true}/>
+                <ItemTitle title="TramsWaiting" secondaryText={`${data.trackLaneOccupied}`} dim={true}/>
+                <ItemTitle title="PedestriansWaiting" secondaryText={`${data.pedestrianLaneOccupied}`} dim={true}/>
             </PanelFoldout>
             {!props.statisticsOnly && <>
                 {props.edges && props.edges.length > 0 && props.phaseIndex !== undefined && <>
                     <Divider/>
-                    <PanelFoldout header={<div className={styles.foldoutHeader}>Signal Delays</div>}
+                    <PanelFoldout header={<div className={styles.foldoutHeader}>{translate("UI.LABEL[C2VM.TrafficLightsEnhancement.SignalDelays]") ?? "Signal Delays"}</div>}
                                 initialExpanded={false}>
                         {props.edges.map((edge, idx) => (
                             <EdgeFoldout

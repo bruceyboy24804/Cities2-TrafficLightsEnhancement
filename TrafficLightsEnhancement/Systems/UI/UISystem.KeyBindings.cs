@@ -11,12 +11,12 @@ public partial class UISystem
 
     private void SetupKeyBindings()
     {
-        if (Mod.m_Settings == null)
+        if (Mod.m_Setting == null)
         {
-            Mod.m_Log.Error($"Mod.m_Settings is null, key bindings will not work.");
+            Mod.log.Error($"Mod.m_Settings is null, key bindings will not work.");
             return;
         }
-        m_MainPanelToggleKeyboardBinding = Mod.m_Settings.GetAction(Settings.kKeyboardBindingMainPanelToggle);
+        m_MainPanelToggleKeyboardBinding = Mod.m_Setting.GetAction(Settings.kKeyboardBindingMainPanelToggle);
         m_MainPanelToggleKeyboardBinding.shouldBeEnabled = true;
         m_MainPanelToggleKeyboardBinding.onInteraction += MainPanelToggle;
     }

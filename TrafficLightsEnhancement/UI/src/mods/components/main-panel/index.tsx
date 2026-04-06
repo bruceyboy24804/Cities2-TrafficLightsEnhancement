@@ -6,8 +6,9 @@ import Header from './header';
 import Content from './content';
 import CustomPhaseMainPanel from '../../components/custom-phase-tool/main-panel';
 import TrafficGroupsMainPanel from '../traffic-groups/main-panel/IndexComponent';
-import{Button, Tooltip} from "cs2/ui"
-import { mainPanel, callMainPanelSave, callMainPanelUpdatePosition, callSetMainPanelState, addMemberState } from '../../../bindings';
+import{ Button, Tooltip} from "cs2/ui"
+import { mainPanel, savePanel, callMainPanelUpdatePosition, setPanelState, addMemberState } from '../../../bindings';
+import { MainPanelMainData, MainPanelEmptyData, MainPanelItemCustomPhaseHeader, MainPanelItemCustomPhase, MainPanelItemTrafficGroup } from 'mods/general';
 const traffLightSrc = "Media/Game/Icons/TrafficLights.svg"
 const defaultPanel = {
   title: "",
@@ -17,7 +18,11 @@ const defaultPanel = {
   showFloatingButton: false,
   state: 0,
   selectedEntity: { index: 0, version: 0 },
-  items: []
+  mainData: null as MainPanelMainData | null,
+  emptyData: null as MainPanelEmptyData | null,
+  customPhaseHeader: null as MainPanelItemCustomPhaseHeader | null,
+  phases: null as MainPanelItemCustomPhase[] | null,
+  groups: null as MainPanelItemTrafficGroup[] | null,
 };
 interface MainPanelType {
   title: string;
@@ -27,7 +32,11 @@ interface MainPanelType {
   showFloatingButton: boolean;
   state: number;
   selectedEntity: { index: number; version: number };
-  items: any[];
+  mainData: MainPanelMainData | null;
+  emptyData: MainPanelEmptyData | null;
+  customPhaseHeader: MainPanelItemCustomPhaseHeader | null;
+  phases: MainPanelItemCustomPhase[] | null;
+  groups: MainPanelItemTrafficGroup[] | null;
 }
 
 const useMainPanel = () => {
@@ -45,7 +54,11 @@ const useMainPanel = () => {
       showFloatingButton: newPanel.showFloatingButton ?? defaultPanel.showFloatingButton,
       state: newPanel.state ?? defaultPanel.state,
       selectedEntity: newPanel.selectedEntity ?? defaultPanel.selectedEntity,
-      items: newPanel.items ?? defaultPanel.items
+      mainData: newPanel.mainData ?? defaultPanel.mainData,
+      emptyData: newPanel.emptyData ?? defaultPanel.emptyData,
+      customPhaseHeader: newPanel.customPhaseHeader ?? defaultPanel.customPhaseHeader,
+      phases: newPanel.phases ?? defaultPanel.phases,
+      groups: newPanel.groups ?? defaultPanel.groups,
     });
   }, [result]);
 
@@ -90,7 +103,7 @@ export default function MainPanel() {
   
   useEffect(() => {
     return () => {
-      callMainPanelSave("{}");
+      savePanel();
     };
   }, []);
 
@@ -106,9 +119,9 @@ export default function MainPanel() {
 
   const floatingButtonClickHandler = useCallback(() => {
     if (panel.showPanel) {
-      callSetMainPanelState(JSON.stringify({value: `${MainPanelState.Hidden}`}));
+      setPanelState(MainPanelState.Hidden);
     } else {
-      callSetMainPanelState(JSON.stringify({value: `${MainPanelState.Empty}`}));
+      setPanelState(MainPanelState.Empty);
     }
   }, [panel.showPanel]);
 
@@ -180,9 +193,9 @@ export default function MainPanel() {
         style={style}
       >
         <Header title={panel.title} image={panel.image} onMouseDown={mouseDownHandler} />
-        {panel.state != MainPanelState.CustomPhase && panel.state != MainPanelState.TrafficGroups && <Content items={panel.items} addMemberData={addMemberData} />}
-        {panel.state == MainPanelState.CustomPhase && <CustomPhaseMainPanel items={panel.items} selectedEntity={panel.selectedEntity} />}
-        {panel.state == MainPanelState.TrafficGroups && <TrafficGroupsMainPanel items={panel.items} />}
+        {panel.state != MainPanelState.CustomPhase && panel.state != MainPanelState.TrafficGroups && <Content mainData={panel.mainData} emptyData={panel.emptyData} addMemberData={addMemberData} />}
+        {panel.state == MainPanelState.CustomPhase && <CustomPhaseMainPanel phases={panel.phases || []} customPhaseHeader={panel.customPhaseHeader} selectedEntity={panel.selectedEntity} />}
+        {panel.state == MainPanelState.TrafficGroups && <TrafficGroupsMainPanel groups={panel.groups || []} />}
       </div>
     </>
   );

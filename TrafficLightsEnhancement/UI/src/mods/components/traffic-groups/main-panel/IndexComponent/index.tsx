@@ -7,7 +7,7 @@ import { ReactNode } from "react";
 import { trigger, useValue } from "cs2/api";
 import { Dropdown, DropdownItem, DropdownToggle, PanelFoldout, Tooltip } from "cs2/ui";
 import Divider from "mods/components/main-panel/items/divider"
-import { MainPanelItem, MainPanelItemTrafficGroup, GroupMemberInfo, MemberPhaseData, EdgeInfo, EdgeGroupMask, CustomPhaseSignalState, CustomPhaseLaneType, CustomPhaseLaneDirection, PatternInfo } from 'mods/general';
+import { MainPanelItemTrafficGroup, GroupMemberInfo, MemberPhaseData, EdgeInfo, EdgeGroupMask, CustomPhaseSignalState, CustomPhaseLaneType, CustomPhaseLaneDirection, PatternInfo } from 'mods/general';
 import { 
 	callCreateTrafficGroup, 
 	callDeleteTrafficGroup, 
@@ -17,8 +17,8 @@ import {
 	callRemoveJunctionFromGroup, 
 	callSelectJunction, 
 	callSetTrafficGroupName, 
-	callCalculateSignalDelays,
-	callSetMainPanelState,
+	
+	setPanelState,
 	callCopyPhasesToJunction,
 	callUpdateMemberPattern,
 	edgeInfo
@@ -88,10 +88,7 @@ const RemoveFromGroupButton = () => {
 
 const CustomPhaseEditorButton = () => {
 	const clickHandler = () => {
-		callSetMainPanelState(JSON.stringify({
-			key: "state",
-			value: String(MainPanelState.CustomPhase)
-		}));
+		setPanelState(MainPanelState.CustomPhase);
 	};
 	return (
 		<Row hoverEffect={true}>
@@ -101,18 +98,11 @@ const CustomPhaseEditorButton = () => {
 };
 
 const BackButton = ({ previousState }: { previousState?: number }) => {
-	
 	const targetState = previousState !== undefined ? previousState : MainPanelState.Empty;
-	const data: MainPanelItemButton = {
-		itemType: "button",
-		type: "button",
-		key: "state",
-		value: targetState.toString(),
-		label: "Back",
-		engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallSetMainPanelState"
-	};
 	return (
-		<Row data={data}><Button {... data} /></Row>
+		<Row hoverEffect={true}>
+			<Button label="Back" onClick={() => setPanelState(targetState)} />
+		</Row>
 	);
 };
 
@@ -174,12 +164,16 @@ const MemberPatternSelector = ({
 const MemberFoldout = ({
 	member,
 	onMemberClick,
-	currentGroup
+	currentGroup,
+	isLockstep
 }: {
 	member: GroupMemberInfo;
 	onMemberClick: (member: GroupMemberInfo) => void;
 	currentGroup?: MainPanelItemTrafficGroup | undefined;
+	isLockstep?: boolean;
 }) => {
+	const isFollowerInLockstep = isLockstep && !member.isLeader;
+
 	const headerContent = (
 		<div 
 			className={styles.memberHeader}
@@ -189,7 +183,7 @@ const MemberFoldout = ({
 			{member.isLeader && <span className={styles.leaderBadge}>(Leader) </span>}
 			Intersection {member.index}
 			{member.isCurrentJunction && <span className={styles.youBadge}> (You)</span>}
-			{}
+			{isFollowerInLockstep && <span style={{ color: 'var(--textColorDim)', fontStyle: 'italic', marginLeft: '4rem' }}> - Synced</span>}
 		</div>
 	);
 
@@ -199,85 +193,21 @@ const MemberFoldout = ({
 			initialExpanded={false}
 			disableFocus={true}
 		>
-			<div className={styles.sectionTitle}>Traffic Signal</div>
-			<MemberPatternSelector
-				memberIndex={member.index}
-				memberVersion={member.version}
-			/>
+			{isFollowerInLockstep ? (
+				<div className={styles.infoText} style={{ fontStyle: 'italic', padding: '0.5em' }}>
+					Controlled by Leader - phases are synced in lockstep
+				</div>
+			) : (
+				<>
+					<div className={styles.sectionTitle}>Traffic Signal</div>
+					<MemberPatternSelector
+						memberIndex={member.index}
+						memberVersion={member.version}
+					/>
+				</>
+			)}
 		</PanelFoldout>
 	);
-};
-
-export const TrafficGroupMenu = ({ viewport, onSelect, onSetExpanded, currentTreeOnlyMode }:  PropsTrafficGroupMenu) => {
-	
-	const targetViewport = viewport.map((item, idx) => ({ idx, item }));
-	
-	
-	let lastNonRootIndex = -1;
-	for (let i = targetViewport.length - 1; i >= 0; i--) {
-		if (targetViewport[i].item.level > 0) {
-			lastNonRootIndex = i;
-			break;
-		}
-	}
-	
-	return <div className={styles.k45_hierarchyTree}>{targetViewport.map((x, index) =>
-		<React.Fragment key={x.idx}>
-			<div 
-				className={classNames(
-					styles.k45_hierarchy_item, 
-					x.item.expanded && styles.expanded, 
-					x.item.selected && styles.selected,
-					index === lastNonRootIndex && styles.last
-				)} 
-				style={{ paddingLeft: (4 + 10 * x.item.level) + "rem" }}
-			>
-				<div 
-					className={classNames(
-						styles.k45_hierarchy_connector, 
-						x.item.isLeader && styles.root
-					)} 
-					onClick={() => x.item.selectable && onSelect?.(x.idx, !x.item.selected)} 
-				/>
-				<div 
-					className={classNames(
-						styles.k45_hierarchy_icon, 
-						x.item.expanded && styles.expanded, 
-						x.item.selected && styles.selected
-					)} 
-					onClick={() => x.item.selectable && onSelect?.(x.idx, !x.item.selected)} 
-					style={{ backgroundImage: x.item.icon ? `url(${x.item.icon})` : 'none' }}
-				/>
-				<div 
-					className={classNames(
-						styles.k45_hierarchy_title, 
-						x.item.expanded && styles.expanded, 
-						x.item.selected && styles.selected
-					)} 
-					onClick={() => x.item.selectable && onSelect?.(x.idx, !x.item.selected)} 
-				>
-					{x.item.displayName}
-				</div>
-				{x.item.expandable && (
-					<div 
-						onClick={(e) => { e.stopPropagation(); onSetExpanded?.(x.idx, !x.item.expanded); }} 
-						className={classNames(styles.expandButton, x.item.expanded && styles.expanded)}
-					>
-						{x.item.expanded ? '▼' : '▶'}
-					</div>
-				)}
-			</div>
-			{x.item.expanded && x.item.availablePatterns && x.item.availablePatterns.length > 0 && (
-				<div className={styles.memberExpandedContent} style={{ paddingLeft: (4 + 10 * (x.item.level + 1)) + "rem" }}>
-					<div className={styles.expandedSectionTitle}>Traffic Signal</div>
-					<MemberPatternSelector 
-						memberIndex={x.item.memberIndex}
-						memberVersion={x.item.memberVersion}
-					/>
-				</div>
-			)}
-		</React.Fragment>
-	)}</div>
 };
 
 const AddMemberButton = ({ currentGroup }: { currentGroup: MainPanelItemTrafficGroup | undefined }) => {
@@ -536,8 +466,8 @@ const MemberSignalEditor = ({
 	);
 };
 
-export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }) {
-	const groups = props.items.filter(item => item.itemType === "trafficGroup") as MainPanelItemTrafficGroup[];
+export default function TrafficGroupsMainPanel(props: { groups: MainPanelItemTrafficGroup[] }) {
+	const groups = props.groups;
 	const currentGroup = groups.find(g => g.isCurrentJunctionInGroup);
 	
 	
@@ -687,37 +617,52 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 								<>
 									
 									{displayedGroup.members.map((member) => (
-										<FocusDisabled>
-											<Tooltip tooltip="Click member name to select the junction and click the foldout to show its options" direction="right">
-												<MemberFoldout
-													key={`${member.index}-${member.version}`}
-													member={member}
-													onMemberClick={handleMemberClick}
-													currentGroup={displayedGroup}
-												/>
-											</Tooltip>
-										</FocusDisabled>
-										
-									))}
+								<FocusDisabled>
+									<Tooltip tooltip="Click member name to select the junction and click the foldout to show its options" direction="right">
+										<MemberFoldout
+											key={`${member.index}-${member.version}`}
+											member={member}
+											onMemberClick={handleMemberClick}
+											currentGroup={displayedGroup}
+											isLockstep={displayedGroup.isCoordinated && !displayedGroup.greenWaveEnabled}
+										/>
+									</Tooltip>
+								</FocusDisabled>
+								
+							))}
 								</>
 							) : (
 								<div className={styles.infoText}>No members in this group</div>
 							)}
 
+							{displayedGroup.isCoordinated && !displayedGroup.greenWaveEnabled && (
+								<div className={styles.infoText} style={{ fontStyle: 'italic', color: 'var(--accentColorNormal)' }}>
+									Lockstep Mode: Leader controls all phases
+								</div>
+							)}
 							<AddMemberButton currentGroup={displayedGroup} />
 							<SelectMemberInWorldButton currentGroup={displayedGroup} />
 							{currentGroup && <RemoveFromGroupButton />}
 							{displayedGroup.isCurrentJunctionInGroup && displayedGroup.members && displayedGroup.members.length > 1 && (() => {
+								const isLockstep = displayedGroup.isCoordinated && !displayedGroup.greenWaveEnabled;
+								const leaderMember = displayedGroup.members.find(m => m.isLeader);
 								const currentMember = displayedGroup.members.find(m => m.isCurrentJunction);
+								if (isLockstep && leaderMember) {
+									return (
+										<CopyPhasesToMemberButton 
+											displayedGroup={displayedGroup}
+											currentJunctionIndex={leaderMember.index}
+											currentJunctionVersion={leaderMember.version}
+										/>
+									);
+								}
 								if (currentMember) {
 									return (
-										<>
-											<CopyPhasesToMemberButton 
-												displayedGroup={displayedGroup}
-												currentJunctionIndex={currentMember.index}
-												currentJunctionVersion={currentMember.version}
-											/>
-										</>
+										<CopyPhasesToMemberButton 
+											displayedGroup={displayedGroup}
+											currentJunctionIndex={currentMember.index}
+											currentJunctionVersion={currentMember.version}
+										/>
 									);
 								}
 								return null;
@@ -789,43 +734,6 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 										engineEventName: "C2VM.TrafficLightsEnhancement.TRIGGER:CallSetGreenWaveOffset",
 										tooltip: "Adjusts the timing offset for the green wave.  Positive values delay the wave, negative values advance it.  Use this to fine-tune coordination."
 									}} />
-
-									{displayedGroup.isCurrentJunctionInGroup && (
-										<MainPanelRange data={{
-											itemType: "range",
-											key: "SignalDelay",
-											label: "Signal Delay",
-											value: displayedGroup.signalDelay || 0,
-											valuePrefix:  "",
-											valueSuffix:  " ticks",
-											min: -60,
-											max: 60,
-											step: 1,
-											defaultValue: 0,
-											enableTextField: true,
-											textFieldRegExp: "^-?\\d{0,2}$",
-											engineEventName:  "C2VM.TrafficLightsEnhancement.TRIGGER:CallSetSignalDelay",
-											tooltip: "Manual signal delay for this junction. Set to 0 to use automatic green wave calculation.  Positive values delay the signal, negative values advance it."
-										}} />
-									)}
-
-									<Row hoverEffect={true} data={{
-										itemType: "button",
-										type: "button",
-										key: "CalculateSignalDelays",
-										value: "",
-										label: "Calculate Signal Delays",
-										engineEventName:  "C2VM.TrafficLightsEnhancement.TRIGGER:CallCalculateSignalDelays"
-									}}>
-										<Button label="Calculate Signal Delays" onClick={() => {
-											if (displayedGroup) {
-												callCalculateSignalDelays(JSON.stringify({
-													groupIndex: displayedGroup.groupIndex,
-													groupVersion: displayedGroup.groupVersion
-												}));
-											}
-										}} />
-									</Row>
 								</>
 							)}
 							
@@ -841,14 +749,17 @@ export default function TrafficGroupsMainPanel(props: { items: MainPanelItem[] }
 									<ItemTitle title="Offset" secondaryText={`${displayedGroup.greenWaveOffset}s`} dim={true} />
 								</>
 							)}
+							{displayedGroup.isCoordinated && (
+								<ItemTitle title="Sync Mode" secondaryText={displayedGroup.greenWaveEnabled ? "Green Wave" : "Lockstep"} dim={true} />
+							)}
 							{displayedGroup.isCurrentJunctionInGroup && (
 								<>
 									<ItemTitle title="Junction Role" secondaryText={displayedGroup.isCurrentJunctionLeader ? "Leader" : "Follower"} dim={true} />
 									{!displayedGroup.isCurrentJunctionLeader && displayedGroup.distanceToLeader !== undefined && (
 										<ItemTitle title="Distance to Leader" secondaryText={`${displayedGroup.distanceToLeader.toFixed(1)}m`} dim={true} />
 									)}
-									{displayedGroup.phaseOffset !== undefined && displayedGroup.phaseOffset !== 0 && (
-										<ItemTitle title="Phase Offset" secondaryText={`${displayedGroup.phaseOffset} ticks`} dim={true} />
+									{displayedGroup.greenWaveEnabled && !displayedGroup.isCurrentJunctionLeader && displayedGroup.signalDelay !== undefined && displayedGroup.signalDelay !== 0 && (
+										<ItemTitle title="Signal Delay" secondaryText={`${displayedGroup.signalDelay}s`} dim={true} />
 									)}
 								</>
 							)}

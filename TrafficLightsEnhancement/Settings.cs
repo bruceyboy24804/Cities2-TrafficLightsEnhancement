@@ -13,7 +13,7 @@ using Unity.Entities;
 
 namespace C2VM.TrafficLightsEnhancement;
 
-[FileLocation("ModsSettings/C2VM.TrafficLightsEnhancement/Settings")]
+[FileLocation(nameof(TrafficLightsEnhancement))]
 [SettingsUITabOrder(kTabGeneral, kTabKeyBindings)]
 [SettingsUIGroupOrder(kGroupGeneral, kGroupDefault, kGroupVersion, kGroupMainPanel, kGroupKeyBindingReset)]
 [SettingsUIShowGroupName]
@@ -230,7 +230,7 @@ public class Settings : ModSetting
             }
         }
         
-        Mod.m_Log.Info($"Cleared {componentName} from {removedCount} entities. Save game to persist changes.");
+        Mod.log.Info($"Cleared {componentName} from {removedCount} entities. Save game to persist changes.");
     }
 
     [SettingsUISection(kTabGeneral, kGroupVersion)]
@@ -277,10 +277,8 @@ public class Settings : ModSetting
     public Settings(IMod mod) : base(mod)
     {
         SetDefaults();
-        RegisterInOptionsUI();
-        RegisterKeyBindings();
-        AssetDatabase.global.LoadSettings(nameof(Settings), this);
     }
+
 
     public override void SetDefaults()
     {

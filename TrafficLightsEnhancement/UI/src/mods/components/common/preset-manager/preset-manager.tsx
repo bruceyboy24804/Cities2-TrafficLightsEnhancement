@@ -1,6 +1,7 @@
 import {useState} from "react";
 import {useValue} from "cs2/api";
 import {Button, Dropdown, DropdownToggle, Tooltip} from "cs2/ui";
+import {useLocalization} from "cs2/l10n";
 
 import {getModule} from "cs2/modding";
 import {Theme} from "cs2/bindings";
@@ -40,6 +41,7 @@ interface PresetManagerProps {
 }
 
 export const PresetManager = ({builtInTemplates, onApplyBuiltIn}: PresetManagerProps) => {
+    const { translate } = useLocalization();
     const userPresetsValue = useValue(userPresets.binding);
     const [isCreating, setIsCreating] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -121,7 +123,7 @@ export const PresetManager = ({builtInTemplates, onApplyBuiltIn}: PresetManagerP
             </DropdownItem>
         )),
         ...(presets.length > 0 ? [
-            <div key="separator" className={styles.separator}>User Presets</div>
+            <div key="separator" className={styles.separator}>{translate("UI.LABEL[C2VM.TrafficLightsEnhancement.UserPresets]") ?? "User Presets"}</div>
         ] : []),
         ...presets.map((preset) => (
             <div key={`user-${preset.Id}`} className={styles.presetRow}>
@@ -136,7 +138,7 @@ export const PresetManager = ({builtInTemplates, onApplyBuiltIn}: PresetManagerP
                     {preset.Name}
                 </DropdownItem>
                 <div className={styles.presetActions}>
-                    <Tooltip tooltip="Edit">
+                    <Tooltip tooltip={translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Edit]") ?? "Edit"}>
                         <Button
                             variant="text"
                             className={styles.buttonStyle}
@@ -145,10 +147,10 @@ export const PresetManager = ({builtInTemplates, onApplyBuiltIn}: PresetManagerP
                                 handleStartEdit(preset);
                             }}
                         >
-                            Edit
+                            {translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Edit]") ?? "Edit"}
                         </Button>
                     </Tooltip>
-                    <Tooltip tooltip="Delete">
+                    <Tooltip tooltip={translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Delete]") ?? "Delete"}>
                         <Button
                             variant="text"
                             className={styles.buttonStyle}
@@ -157,7 +159,7 @@ export const PresetManager = ({builtInTemplates, onApplyBuiltIn}: PresetManagerP
                                 handleDelete(preset.Id);
                             }}
                         >
-                            Delete
+                            {translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Delete]") ?? "Delete"}
                         </Button>
                     </Tooltip>
                 </div>
@@ -169,7 +171,7 @@ export const PresetManager = ({builtInTemplates, onApplyBuiltIn}: PresetManagerP
         return (
             <div className={styles.container}>
                 <div className={styles.header}>
-                    {isEditing ? "Edit Preset" : "New Preset"}
+                    {isEditing ? (translate("UI.LABEL[C2VM.TrafficLightsEnhancement.EditPreset]") ?? "Edit Preset") : (translate("UI.LABEL[C2VM.TrafficLightsEnhancement.NewPreset]") ?? "New Preset")}
                 </div>
                 <div className={styles.inputRow}>
                     <TextInput
@@ -180,7 +182,7 @@ export const PresetManager = ({builtInTemplates, onApplyBuiltIn}: PresetManagerP
                 </div>
                 <div className={styles.buttonRow}>
                     <Button variant="flat" onSelect={handleCancel} className={styles.buttonStyle} >
-                        Cancel
+                        {translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Cancel]") ?? "Cancel"}
                     </Button>
                     <Button
                         variant="primary"
@@ -188,7 +190,7 @@ export const PresetManager = ({builtInTemplates, onApplyBuiltIn}: PresetManagerP
                         disabled={presetName.trim().length === 0}
                         className={styles.buttonStyle}
                     >
-                        {isEditing ? "Update" : "Save"}
+                        {isEditing ? (translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Update]") ?? "Update") : (translate("UI.LABEL[C2VM.TrafficLightsEnhancement.Save]") ?? "Save")}
                     </Button>
                 </div>
             </div>
@@ -199,12 +201,12 @@ export const PresetManager = ({builtInTemplates, onApplyBuiltIn}: PresetManagerP
         <div className={styles.container}>
             <Dropdown theme={DropdownStyle} content={dropdownContent}>
                 <DropdownToggle>
-                    {selectedPreset ? `${selectedPreset.name}` : 'Apply Template...'}
+                    {selectedPreset ? `${selectedPreset.name}` : (translate("UI.LABEL[C2VM.TrafficLightsEnhancement.ApplyTemplate]") ?? "Apply Template...")}
                 </DropdownToggle>
             </Dropdown>
             <div className={styles.buttonRow}>
                 <Button variant="flat" onSelect={() => setIsCreating(true)} className={styles.buttonStyle}>
-                    Save Current as Preset
+                    {translate("UI.LABEL[C2VM.TrafficLightsEnhancement.SaveCurrentAsPreset]") ?? "Save Current as Preset"}
                 </Button>
             </div>
         </div>

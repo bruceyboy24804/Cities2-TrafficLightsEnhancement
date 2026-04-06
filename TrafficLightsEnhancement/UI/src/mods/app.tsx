@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import engine from "cohtml/cohtml";
 import { bindValue, useValue } from "cs2/api";
 import mod from "mod.json";
 
-import { CityConfigurationContext, defaultCityConfiguration, LocaleContext } from "./context";
-import { defaultLocale } from "./localisations";
+import { CityConfigurationContext, defaultCityConfiguration } from "./context";
 import { callKeyPress } from "bindings";
 
 import MainPanel from "./components/main-panel";
@@ -13,14 +12,6 @@ import CustomPhaseTool from "./components/custom-phase-tool";
 import { MigrationIssuesModal } from "./components/migration-issues";
 
 export default function App() {
-  const [locale, setLocale] = useState(defaultLocale);
-
-  const localeValue = useValue(bindValue(mod.id, "GetLocale", "{}"));
-  const newLocale = JSON.parse(localeValue);
-  if (newLocale.locale && newLocale.locale != locale) {
-    setLocale(newLocale.locale);
-  }
-
   const cityConfigurationJson = useValue(bindValue(mod.id, "GetCityConfiguration", JSON.stringify(defaultCityConfiguration)));
   const cityConfiguration = JSON.parse(cityConfigurationJson);
 
@@ -36,11 +27,9 @@ export default function App() {
 
   return (
     <CityConfigurationContext.Provider value={cityConfiguration}>
-      <LocaleContext.Provider value={locale}>
-        <MainPanel />
-        <CustomPhaseTool />
-        <MigrationIssuesModal />
-      </LocaleContext.Provider>
+      <MainPanel />
+      <CustomPhaseTool />
+      <MigrationIssuesModal />
     </CityConfigurationContext.Provider>
   );
 }

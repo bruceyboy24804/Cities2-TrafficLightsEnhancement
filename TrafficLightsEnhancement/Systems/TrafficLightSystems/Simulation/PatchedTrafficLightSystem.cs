@@ -145,9 +145,9 @@ public partial class PatchedTrafficLightSystem : GameSystemBase
                     CustomStateMachine.CalculateFlow(this, unfilteredChunkIndex, subLanes, trafficLights, customPhaseDataBuffer);
                     
                     Entity currentEntity = nativeArray[i];
-                    if (CustomStateMachine.ShouldFollowLeader(this, currentEntity, out Entity leaderEntity))
+                    if (CustomStateMachine.ShouldFollowLeader(this, currentEntity, out Entity groupEntity))
                     {
-                        CustomStateMachine.SyncSignalGroupWithLeader(this, currentEntity, leaderEntity, ref trafficLights, ref customTrafficLights);
+                        CustomStateMachine.SyncSignalGroupWithLeader(this, currentEntity, groupEntity, ref trafficLights, ref customTrafficLights);
                         UpdateLaneSignals(laneSignals, trafficLights);
                         UpdateTrafficLightObjects(subObjects, trafficLights);
                     }

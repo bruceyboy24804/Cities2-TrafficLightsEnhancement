@@ -17,7 +17,7 @@ namespace C2VM.TrafficLightsEnhancement.Systems;
 
 public partial class TrafficGroupSystem : GameSystemBase
 {
-	private static ILog m_Log = Mod.m_Log;
+	private static ILog m_Log = Mod.log;
 
 	private EntityQuery m_GroupQuery;
 	private EntityQuery m_MemberQuery;
@@ -60,6 +60,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 			{
 				group.m_CycleTimer = 0f;
 			}
+			UpdateMasterClock(groupEntity, ref group);
 			ApplyCoordination(groupEntity, group);
 			EntityManager.SetComponentData(groupEntity, group);
 		}
@@ -114,7 +115,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 		bool isLeader = memberCount == 0;
 		Entity leaderEntity = isLeader ? junctionEntity : GetGroupLeader(groupEntity);
 
-		var member = new TrafficGroupMember(groupEntity, leaderEntity, memberCount, 0f, 0f, 0, 0, isLeader);
+		var member = new TrafficGroupMember(groupEntity, leaderEntity, memberCount, 0f, 0f, 0, 0, 0f, isLeader);
 		EntityManager.AddComponentData(junctionEntity, member);
 		if (EntityManager.HasComponent<CustomTrafficLights>(junctionEntity))
 		{
@@ -155,10 +156,14 @@ public partial class TrafficGroupSystem : GameSystemBase
 			CalculateGreenWaveTiming(groupEntity);
 		}
 		
-		if (group.m_IsCoordinated && !isLeader && leaderEntity != Entity.Null && EntityManager.HasComponent<TrafficLights>(leaderEntity))
+		if (group.m_IsCoordinated && !isLeader)
 		{
-			var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
-			PropagateLeaderPhaseChange(groupEntity, leaderLights.m_CurrentSignalGroup, leaderLights.m_State);
+			UpdateMasterClock(groupEntity, ref group);
+			EntityManager.SetComponentData(groupEntity, group);
+			if (group.m_MasterSignalGroupCount > 0)
+			{
+				PropagateLeaderPhaseChange(groupEntity, group.m_MasterPhase, group.m_MasterState);
+			}
 		}
 		return true;
 	}
@@ -180,12 +185,22 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 		EntityManager.RemoveComponent<TrafficGroupMember>(junctionEntity);
 
-		if (member.m_IsGroupLeader && groupEntity != Entity.Null)
+		if (groupEntity != Entity.Null && EntityManager.HasComponent<TrafficGroup>(groupEntity))
 		{
-			AssignNewLeader(groupEntity);
-		}
+			int remainingMembers = GetGroupMemberCount(groupEntity);
+			if (remainingMembers == 0)
+			{
+				EntityManager.DestroyEntity(groupEntity);
+				return true;
+			}
 
-		ReindexGroupMembers(groupEntity);
+			if (member.m_IsGroupLeader)
+			{
+				AssignNewLeader(groupEntity);
+			}
+
+			ReindexGroupMembers(groupEntity);
+		}
 
 		return true;
 	}
@@ -387,6 +402,9 @@ public partial class TrafficGroupSystem : GameSystemBase
 		{
 			if (memberEntity == leaderEntity)
 			{
+				var leaderMember = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
+				leaderMember.m_MemberCycleTimer = 0f;
+				EntityManager.SetComponentData(memberEntity, leaderMember);
 				continue;
 			}
 
@@ -413,8 +431,17 @@ public partial class TrafficGroupSystem : GameSystemBase
 				phaseOffset = (int)math.round(travelTimeSeconds + group.m_GreenWaveOffset);
 			}
 
+			// Initialize the per-member cycle timer offset
+			float memberCyclePos = group.m_CycleTimer - phaseOffset;
+			memberCyclePos = memberCyclePos % group.m_CycleLength;
+			if (memberCyclePos < 0f)
+			{
+				memberCyclePos += group.m_CycleLength;
+			}
+
 			memberData.m_DistanceToLeader = distance;
 			memberData.m_PhaseOffset = phaseOffset;
+			memberData.m_MemberCycleTimer = memberCyclePos;
 			EntityManager.SetComponentData(memberEntity, memberData);
 
 		}
@@ -445,10 +472,14 @@ public partial class TrafficGroupSystem : GameSystemBase
 			{
 				CalculateGreenWaveTiming(groupEntity);
 			}
-			if (group.m_IsCoordinated && leaderEntity != Entity.Null && EntityManager.HasComponent<TrafficLights>(leaderEntity))
+			if (group.m_IsCoordinated)
 			{
-				var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
-				PropagateLeaderPhaseChange(groupEntity, leaderLights.m_CurrentSignalGroup, leaderLights.m_State);
+				UpdateMasterClock(groupEntity, ref group);
+				EntityManager.SetComponentData(groupEntity, group);
+				if (group.m_MasterSignalGroupCount > 0)
+				{
+					PropagateLeaderPhaseChange(groupEntity, group.m_MasterPhase, group.m_MasterState);
+				}
 			}
 		}
 	}
@@ -477,10 +508,14 @@ public partial class TrafficGroupSystem : GameSystemBase
 				CalculateGreenWaveTiming(groupEntity);
 			}
 			
-			if (group.m_IsCoordinated && leaderEntity != Entity.Null && EntityManager.HasComponent<TrafficLights>(leaderEntity))
+			if (group.m_IsCoordinated)
 			{
-				var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
-				PropagateLeaderPhaseChange(groupEntity, leaderLights.m_CurrentSignalGroup, leaderLights.m_State);
+				UpdateMasterClock(groupEntity, ref group);
+				EntityManager.SetComponentData(groupEntity, group);
+				if (group.m_MasterSignalGroupCount > 0)
+				{
+					PropagateLeaderPhaseChange(groupEntity, group.m_MasterPhase, group.m_MasterState);
+				}
 			}
 		}
 	}
@@ -509,10 +544,14 @@ public partial class TrafficGroupSystem : GameSystemBase
 				CalculateGreenWaveTiming(groupEntity);
 			}
 			
-			if (group.m_IsCoordinated && leaderEntity != Entity.Null && EntityManager.HasComponent<TrafficLights>(leaderEntity))
+			if (group.m_IsCoordinated)
 			{
-				var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
-				PropagateLeaderPhaseChange(groupEntity, leaderLights.m_CurrentSignalGroup, leaderLights.m_State);
+				UpdateMasterClock(groupEntity, ref group);
+				EntityManager.SetComponentData(groupEntity, group);
+				if (group.m_MasterSignalGroupCount > 0)
+				{
+					PropagateLeaderPhaseChange(groupEntity, group.m_MasterPhase, group.m_MasterState);
+				}
 			}
 		}
 
@@ -632,11 +671,10 @@ public partial class TrafficGroupSystem : GameSystemBase
 			group.m_CycleTimer = 0f;
 			
 			
-			Entity leaderEntity = GetGroupLeader(groupEntity);
-			if (leaderEntity != Entity.Null && EntityManager.HasComponent<TrafficLights>(leaderEntity))
+			UpdateMasterClock(groupEntity, ref group);
+			if (group.m_MasterSignalGroupCount > 0)
 			{
-				var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
-				PropagateLeaderPhaseChange(groupEntity, leaderLights.m_CurrentSignalGroup, leaderLights.m_State);
+				PropagateLeaderPhaseChange(groupEntity, group.m_MasterPhase, group.m_MasterState);
 			}
 		}
 		
@@ -644,25 +682,53 @@ public partial class TrafficGroupSystem : GameSystemBase
 
 	}
 
+	private void UpdateMasterClock(Entity groupEntity, ref TrafficGroup group)
+	{
+		Entity leaderEntity = GetGroupLeader(groupEntity);
+		if (leaderEntity == Entity.Null)
+		{
+			return;
+		}
+
+		if (EntityManager.HasComponent<TrafficLights>(leaderEntity))
+		{
+			var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
+			group.m_MasterPhase = leaderLights.m_CurrentSignalGroup;
+			group.m_MasterNextPhase = leaderLights.m_NextSignalGroup;
+			group.m_MasterState = leaderLights.m_State;
+			group.m_MasterTimer = leaderLights.m_Timer;
+			group.m_MasterSignalGroupCount = leaderLights.m_SignalGroupCount;
+		}
+
+		if (EntityManager.HasComponent<CustomTrafficLights>(leaderEntity))
+		{
+			var leaderCustom = EntityManager.GetComponentData<CustomTrafficLights>(leaderEntity);
+			group.m_MasterCustomTimer = leaderCustom.m_Timer;
+		}
+	}
+
 	private void ApplyCoordination(Entity groupEntity, TrafficGroup group)
 	{
-		if (group.m_CycleLength <= 0)
+		if (group.m_CycleLength <= 0 || group.m_MasterSignalGroupCount == 0)
 		{
 			return;
 		}
 
-		Entity leaderEntity = GetGroupLeader(groupEntity);
-		if (leaderEntity == Entity.Null || !EntityManager.HasComponent<TrafficLights>(leaderEntity))
+		// TMPE-style lockstep: when green wave is off, the job-level
+		// SyncSignalGroupWithLeader handles sync directly by copying
+		// master state to followers. No main-thread nudging needed.
+		if (!group.m_GreenWaveEnabled)
 		{
 			return;
 		}
 
-		var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
+		// Green wave mode: update member cycle timers for offset-based staggering
 		var members = GetGroupMembers(groupEntity);
 		
 		foreach (var memberEntity in members)
 		{
-			if (memberEntity == leaderEntity)
+			var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
+			if (memberData.m_IsGroupLeader)
 			{
 				continue;
 			}
@@ -672,36 +738,40 @@ public partial class TrafficGroupSystem : GameSystemBase
 				continue;
 			}
 
-			var trafficLights = EntityManager.GetComponentData<TrafficLights>(memberEntity);
-			var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
-			
-			if (trafficLights.m_SignalGroupCount == 0)
+			if (memberData.m_SignalDelay == 0)
 			{
 				continue;
 			}
 
-			
-			int expectedPhase = leaderLights.m_CurrentSignalGroup + memberData.m_PhaseOffset;
-			int phaseCount = trafficLights.m_SignalGroupCount;
-			if (phaseCount > 0)
+			// Time-based staggering: compute this member's position in the cycle
+			float memberCyclePos = group.m_CycleTimer - memberData.m_SignalDelay;
+			memberCyclePos = memberCyclePos % group.m_CycleLength;
+			if (memberCyclePos < 0f)
 			{
-				expectedPhase = ((expectedPhase - 1) % phaseCount) + 1;
-				if (expectedPhase <= 0) expectedPhase += phaseCount;
+				memberCyclePos += group.m_CycleLength;
 			}
 
-			int phaseDiff = math.abs(trafficLights.m_CurrentSignalGroup - expectedPhase);
-			if (phaseDiff > 1 && phaseDiff < trafficLights.m_SignalGroupCount - 1)
-			{
-				trafficLights.m_NextSignalGroup = (byte)expectedPhase;
-				if (trafficLights.m_State == TrafficLightState.Ongoing)
-				{
-					trafficLights.m_State = TrafficLightState.Ending;
-				}
-				EntityManager.SetComponentData(memberEntity, trafficLights);
-			}
+			memberData.m_MemberCycleTimer = memberCyclePos;
+			EntityManager.SetComponentData(memberEntity, memberData);
 		}
 
 		members.Dispose();
+	}
+
+	// TMPE-style: simple wrap of a 1-indexed phase into a valid range
+	private static int WrapPhase(int phase, int phaseCount)
+	{
+		if (phaseCount <= 0)
+		{
+			return 1;
+		}
+		if (phase <= 0)
+		{
+			return 1;
+		}
+		int wrapped = ((phase - 1) % phaseCount) + 1;
+		if (wrapped <= 0) wrapped += phaseCount;
+		return wrapped;
 	}
 
 	
@@ -880,6 +950,7 @@ public partial class TrafficGroupSystem : GameSystemBase
 				var leaderMember = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
 				leaderMember.m_PhaseOffset = 0;
 				leaderMember.m_SignalDelay = 0;
+				leaderMember.m_MemberCycleTimer = 0f;
 				EntityManager.SetComponentData(memberEntity, leaderMember);
 				continue;
 			}
@@ -901,10 +972,19 @@ public partial class TrafficGroupSystem : GameSystemBase
 			int phaseOffset = (int)(arrivalTime / leaderCycleLength * GetPhaseCount(memberEntity));
 			phaseOffset = phaseOffset % math.max(1, GetPhaseCount(memberEntity));
 
+			// Initialize the per-member cycle timer offset
+			float memberCyclePos = group.m_CycleTimer - signalDelay;
+			memberCyclePos = memberCyclePos % leaderCycleLength;
+			if (memberCyclePos < 0f)
+			{
+				memberCyclePos += leaderCycleLength;
+			}
+
 			var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
 			memberData.m_DistanceToLeader = distance;
 			memberData.m_PhaseOffset = phaseOffset;
 			memberData.m_SignalDelay = signalDelay;
+			memberData.m_MemberCycleTimer = memberCyclePos;
 			EntityManager.SetComponentData(memberEntity, memberData);
 
 		}
@@ -920,7 +1000,41 @@ public partial class TrafficGroupSystem : GameSystemBase
 		}
 		return 1;
 	}
-	
+
+	// Determines which phase (1-indexed) a member should be in based on its position in the cycle.
+	// Walks the CustomPhaseData durations to find which phase window the cyclePosition falls into.
+	private int DeterminePhaseFromCyclePosition(Entity memberEntity, float cyclePosition, float cycleLength)
+	{
+		if (!EntityManager.HasBuffer<CustomPhaseData>(memberEntity) ||
+			!EntityManager.TryGetBuffer<CustomPhaseData>(memberEntity, true, out var phases) ||
+			phases.Length == 0)
+		{
+			// Fallback: evenly divide cycle among signal groups
+			if (EntityManager.HasComponent<TrafficLights>(memberEntity))
+			{
+				var tl = EntityManager.GetComponentData<TrafficLights>(memberEntity);
+				if (tl.m_SignalGroupCount > 0)
+				{
+					float phaseLen = cycleLength / tl.m_SignalGroupCount;
+					int phase = (int)(cyclePosition / math.max(1f, phaseLen)) + 1;
+					return math.clamp(phase, 1, tl.m_SignalGroupCount);
+				}
+			}
+			return 1;
+		}
+
+		float accumulated = 0f;
+		for (int i = 0; i < phases.Length; i++)
+		{
+			accumulated += phases[i].m_MaximumDuration;
+			if (cyclePosition < accumulated)
+			{
+				return i + 1; // 1-indexed
+			}
+		}
+		return 1; // Wrapped past end, back to first phase
+	}
+
 	public void PropagateLeaderPhaseChange(Entity groupEntity, byte newPhase, TrafficLightState newState)
 	{
 		if (groupEntity == Entity.Null || !EntityManager.HasComponent<TrafficGroup>(groupEntity))
@@ -934,12 +1048,23 @@ public partial class TrafficGroupSystem : GameSystemBase
 			return;
 		}
 
+		group.m_MasterPhase = newPhase;
+		group.m_MasterState = newState;
+		EntityManager.SetComponentData(groupEntity, group);
+
+		// When green wave is enabled, let the job-level sync handle staggered timing
+		if (group.m_GreenWaveEnabled)
+		{
+			return;
+		}
+
+		// TMPE-style lockstep: set master phase directly on all followers
 		var members = GetGroupMembers(groupEntity);
-		Entity leaderEntity = GetGroupLeader(groupEntity);
 
 		foreach (var memberEntity in members)
 		{
-			if (memberEntity == leaderEntity)
+			var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
+			if (memberData.m_IsGroupLeader)
 			{
 				continue;
 			}
@@ -949,24 +1074,17 @@ public partial class TrafficGroupSystem : GameSystemBase
 				continue;
 			}
 
-			var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
 			var trafficLights = EntityManager.GetComponentData<TrafficLights>(memberEntity);
 
-			int adjustedPhase = newPhase + memberData.m_PhaseOffset;
-			int phaseCount = trafficLights.m_SignalGroupCount;
-			if (phaseCount > 0)
-			{
-				adjustedPhase = ((adjustedPhase - 1) % phaseCount) + 1;
-			}
+			int wrappedPhase = WrapPhase(group.m_MasterPhase, trafficLights.m_SignalGroupCount);
 			
-			if (trafficLights.m_CurrentSignalGroup != adjustedPhase)
+			if (trafficLights.m_CurrentSignalGroup != wrappedPhase)
 			{
-				trafficLights.m_NextSignalGroup = (byte)adjustedPhase;
+				trafficLights.m_NextSignalGroup = (byte)wrappedPhase;
 				
 				if (trafficLights.m_State == TrafficLightState.Ongoing)
 				{
-					    trafficLights.m_State = TrafficLightState.Ending;
-
+					trafficLights.m_State = TrafficLightState.Ending;
 				}
 			}
 
@@ -984,18 +1102,21 @@ public partial class TrafficGroupSystem : GameSystemBase
 			return;
 		}
 
-		Entity leaderEntity = GetGroupLeader(groupEntity);
-		if (leaderEntity == Entity.Null || !EntityManager.HasComponent<TrafficLights>(leaderEntity))
+		var group = EntityManager.GetComponentData<TrafficGroup>(groupEntity);
+		UpdateMasterClock(groupEntity, ref group);
+		EntityManager.SetComponentData(groupEntity, group);
+
+		if (group.m_MasterSignalGroupCount == 0)
 		{
 			return;
 		}
 
-		var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
 		var members = GetGroupMembers(groupEntity);
 
 		foreach (var memberEntity in members)
 		{
-			if (memberEntity == leaderEntity)
+			var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
+			if (memberData.m_IsGroupLeader)
 			{
 				continue;
 			}
@@ -1005,21 +1126,39 @@ public partial class TrafficGroupSystem : GameSystemBase
 				continue;
 			}
 
-			var memberData = EntityManager.GetComponentData<TrafficGroupMember>(memberEntity);
-			var trafficLights = EntityManager.GetComponentData<TrafficLights>(memberEntity);
-
-			int adjustedPhase = leaderLights.m_CurrentSignalGroup + memberData.m_PhaseOffset;
-			int phaseCount = trafficLights.m_SignalGroupCount;
-			if (phaseCount > 0)
+			// Initialize the per-member cycle timer from the group timer and signal delay
+			if (group.m_GreenWaveEnabled && group.m_CycleLength > 0)
 			{
-				adjustedPhase = ((adjustedPhase - 1) % phaseCount) + 1;
+				float memberCyclePos = group.m_CycleTimer - memberData.m_SignalDelay;
+				memberCyclePos = memberCyclePos % group.m_CycleLength;
+				if (memberCyclePos < 0f)
+				{
+					memberCyclePos += group.m_CycleLength;
+				}
+				memberData.m_MemberCycleTimer = memberCyclePos;
+				EntityManager.SetComponentData(memberEntity, memberData);
 			}
 
-			trafficLights.m_CurrentSignalGroup = (byte)adjustedPhase;
-			trafficLights.m_State = leaderLights.m_State;
-			
-			int adjustedTimer = leaderLights.m_Timer - memberData.m_SignalDelay;
-			trafficLights.m_Timer = (byte)math.clamp(adjustedTimer, 0, 255);
+			var trafficLights = EntityManager.GetComponentData<TrafficLights>(memberEntity);
+
+			int adjustedPhase;
+			if (group.m_GreenWaveEnabled && memberData.m_SignalDelay != 0 && group.m_CycleLength > 0)
+			{
+				adjustedPhase = DeterminePhaseFromCyclePosition(
+					memberEntity, memberData.m_MemberCycleTimer, group.m_CycleLength);
+				trafficLights.m_CurrentSignalGroup = (byte)adjustedPhase;
+				trafficLights.m_State = group.m_MasterState;
+				int adjustedTimer = group.m_MasterTimer - memberData.m_SignalDelay;
+				trafficLights.m_Timer = (byte)math.clamp(adjustedTimer, 0, 255);
+			}
+			else
+			{
+				// TMPE-style lockstep: mirror master state directly
+				adjustedPhase = WrapPhase(group.m_MasterPhase, trafficLights.m_SignalGroupCount);
+				trafficLights.m_CurrentSignalGroup = (byte)adjustedPhase;
+				trafficLights.m_State = group.m_MasterState;
+				trafficLights.m_Timer = group.m_MasterTimer;
+			}
 
 			EntityManager.SetComponentData(memberEntity, trafficLights);
 		}
@@ -2130,14 +2269,22 @@ public partial class TrafficGroupSystem : GameSystemBase
 			return;
 		}
 
-		Entity leaderEntity = GetGroupLeader(groupEntity);
-		if (leaderEntity == Entity.Null || !EntityManager.HasComponent<TrafficLights>(leaderEntity))
+		var group = EntityManager.GetComponentData<TrafficGroup>(groupEntity);
+		UpdateMasterClock(groupEntity, ref group);
+		EntityManager.SetComponentData(groupEntity, group);
+
+		if (group.m_MasterSignalGroupCount == 0)
 		{
 			return;
 		}
 
-		var leaderLights = EntityManager.GetComponentData<TrafficLights>(leaderEntity);
-		int currentPhase = leaderLights.m_CurrentSignalGroup - 1;
+		Entity leaderEntity = GetGroupLeader(groupEntity);
+		if (leaderEntity == Entity.Null)
+		{
+			return;
+		}
+
+		int currentPhase = group.m_MasterPhase - 1;
 
 		int bestPhase = CalculateBestNextPhase(leaderEntity, currentPhase);
 
