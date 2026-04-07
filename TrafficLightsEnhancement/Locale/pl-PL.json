@@ -87,7 +87,7 @@
     "UI.LABEL[C2VM.TrafficLightsEnhancement.PhaseChangeMode]": "Zmiana cyklu",
     "UI.LABEL[C2VM.TrafficLightsEnhancement.VehicleWeights]": "Wagi pojazdów",
     "UI.LABEL[C2VM.TrafficLightsEnhancement.EndPhasePrematurely]": "Zakończ cykl",
-    "UI.LABEL[C2VM.TrafficLightsEnhancement.PhaseEndRequested]": "Wysłano żądanie zakończenia cyklu",
+    "UI.LABEL[C2VM.TrafficLightsEnhancement.PhaseEndRequested]": "Zakańczanie cyklu",
     "UI.LABEL[C2VM.TrafficLightsEnhancement.TimingTemplate]": "Szablon regulatora",
     "UI.LABEL[C2VM.TrafficLightsEnhancement.ApplyTemplate]": "Stosowanie szablonu...",
     "UI.LABEL[C2VM.TrafficLightsEnhancement.SaveCurrentAsPreset]": "Zapisz bieżące ustawienia jako szablon",
