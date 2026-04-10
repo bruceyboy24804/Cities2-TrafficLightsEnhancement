@@ -102,7 +102,7 @@
     "UI.LABEL[C2VM.TrafficLightsEnhancement.LdtRetirementNotice]": "Narzędzie zmiany strzałek pasów zostało wycofane i zastąpione modem Traffic od krzychu124. Dziękuje za skorzystanie z narzędzia zmiany strzałek pasów.",
     "UI.LABEL[C2VM.TrafficLightsEnhancement.Dynamic]": "Dynamiczna",
     "UI.LABEL[C2VM.TrafficLightsEnhancement.FixedTimed]": "Stała",
-    "UI.LABEL[C2VM.TrafficLightsEnhancement.SmartPhaseSelection]": "Adaptacyjna zmiana cyklu",
+    "UI.LABEL[C2VM.TrafficLightsEnhancement.SmartPhaseSelection]": "Inteligentna zmiana cyklu",
     "UI.LABEL[C2VM.TrafficLightsEnhancement.Auto]": "Auto",
     "UI.LABEL[C2VM.TrafficLightsEnhancement.OnFlowDrop]": "Przy zmniejszeniu przepływu",
     "UI.LABEL[C2VM.TrafficLightsEnhancement.OnWaitIncrease]": "Przy zwiększeniu oczekiwania",
