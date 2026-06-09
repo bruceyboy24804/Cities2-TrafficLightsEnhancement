@@ -1,7 +1,7 @@
 {
     "Options.SECTION[C2VM.TrafficLightsEnhancement.C2VM.TrafficLightsEnhancement.Mod]": "교통 신호 기능 강화 (TLE)",
     "Options.TAB[C2VM.TrafficLightsEnhancement.C2VM.TrafficLightsEnhancement.Mod.TabGeneral]": "일반",
-    "Options.TAB[C2VM.TrafficLightsEnhancement.C2VM.TrafficLightsEnhancement.Mod.TabKeyBindings]": "키 설정",
+    "Options.TAB[C2VM.TrafficLightsEnhancement.C2VM.TrafficLightsEnhancement.Mod.TabKeyBindings]": "단축키 설정",
     "Options.GROUP[C2VM.TrafficLightsEnhancement.C2VM.TrafficLightsEnhancement.Mod.GroupGeneral]": "일반",
     "Options.GROUP[C2VM.TrafficLightsEnhancement.C2VM.TrafficLightsEnhancement.Mod.GroupLanguage]": "언어",
     "Options.GROUP[C2VM.TrafficLightsEnhancement.C2VM.TrafficLightsEnhancement.Mod.GroupDefault]": "기본값",
